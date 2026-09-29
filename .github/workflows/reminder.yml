@@ -1,0 +1,24 @@
+name: Daily reminder
+on:
+  schedule:
+    - cron: '0 0 * * *'   # منتصف الليل UTC — آمن لكل المناطق الزمنية
+  workflow_dispatch:       # يسمح بتشغيله يدوياً من تبويب Actions للاختبار
+
+jobs:
+  remind:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send daily push via OneSignal
+        run: |
+          # للاختبار الفوري: احذف سطر "delayed_options" من الأسفل،
+          # ثم شغّل الـ workflow يدوياً من تبويب Actions.
+          curl -s https://api.onesignal.com/notifications \
+            -H "Authorization: Basic ${{ secrets.ONESIGNAL_KEY }}" \
+            -H "Content-Type: application/json; charset=utf-8" \
+            -d '{
+              "app_id": "YOUR_APP_ID",
+              "filters": [{"field": "tag", "key": "push", "relation": "exists"}],
+              "headings": {"en": "Englify"},
+              "contents": {"en": "حان وقت التدرب على الإنجليزية!"},
+              "delayed_options": {"delivery_time_of_day": "6:00PM", "time_zone": "Recipient"}
+            }'

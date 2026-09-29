@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Englify — تعلّم المفردات الإنجليزية</title>
+  <meta name="description" content="Englify — اجعل الإنجليزية جزءاً من روتينك اليومي.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icons/icon-180.png">
+  <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#main">تخطَّ إلى المحتوى</a>
+
+  <!-- Mobile top bar -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">E</span>
+      <span class="brand-name" lang="en">Englify</span>
+    </div>
+    <div class="streak-chip" title="السلسلة الحالية">
+      <span class="ic is-amber" data-icon="flame"></span>
+      <span id="topbar-streak-num">0</span>
+      <span class="visually-hidden">سلسلة الأيام</span>
+    </div>
+  </header>
+
+  <div class="shell">
+    <!-- Desktop sidebar -->
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">E</span>
+        <span class="brand-text">
+          <span class="brand-name" lang="en">Englify</span>
+          <span class="brand-sub">اجعل الإنجليزية جزءاً من روتينك اليومي</span>
+        </span>
+      </div>
+
+      <nav class="sidenav" aria-label="التنقل الرئيسي">
+        <button class="nav-item is-active" type="button" data-nav="home"><span class="ic" data-icon="home"></span>الرئيسية</button>
+        <button class="nav-item" type="button" data-nav="learn"><span class="ic" data-icon="book"></span>تعلّم</button>
+        <button class="nav-item" type="button" data-nav="review"><span class="ic" data-icon="repeat"></span>مراجعة<span class="nav-badge" id="review-badge"></span></button>
+        <button class="nav-item" type="button" data-nav="progress"><span class="ic" data-icon="chart"></span>التقدم</button>
+        <button class="nav-item" type="button" data-nav="settings"><span class="ic" data-icon="sliders"></span>الإعدادات</button>
+      </nav>
+
+      <div class="sidebar-foot">
+        <div class="foot-chip"><span class="ic is-amber" data-icon="flame"></span><span id="sidebar-streak">0</span><span class="foot-label">سلسلة</span></div>
+        <div class="foot-chip"><span class="ic is-cyan" data-icon="zap"></span><span id="sidebar-xp">0</span><span class="foot-label">نقاط</span></div>
+      </div>
+    </aside>
+
+    <main id="main" class="main">
+      <!-- ============ الرئيسية ============ -->
+      <section class="screen is-active" id="screen-home" data-screen="home">
+        <div class="panel hero">
+          <div class="hero-text">
+            <p class="eyebrow" id="home-greeting">مساء الخير</p>
+            <h1>وقت تمرين اليوم!</h1>
+            <div class="hero-actions">
+              <button class="btn btn-primary btn-lg" id="btn-start" type="button"><span class="ic" data-icon="play"></span>ابدأ التعلّم</button>
+              <button class="btn btn-ghost btn-lg" id="btn-home-review" type="button"><span class="ic" data-icon="repeat"></span>مراجعة الأخطاء<span class="count-pill" id="home-mistake-count" hidden>0</span></button>
+            </div>
+          </div>
+          <div class="hero-streak">
+            <svg class="big-flame" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="#ffb13d" d="M12 2.4c.7 3-.8 4.8-2.1 6.4C8.5 10.5 7 12.4 7 14.7 7 18.2 9.2 20.7 12 20.7s5-2.5 5-6c0-1.6-.6-3-1.4-4.2-.5 1.2-1.4 2.1-2.6 2.5 1-2.6.4-5.4-1-7.5-.6-.9-1.2-1.9-1-3.1z"/>
+              <path fill="#c97f10" d="M12 20.7c-1.8 0-3.1-1.5-3.1-3.4 0-1.4.8-2.5 1.7-3.6.6-.8 1.1-1.6 1.4-2.7 1 1.6 3.1 3 3.1 6.3 0 1.9-1.3 3.4-3.1 3.4z"/>
+            </svg>
+            <div class="hero-streak-num" id="home-streak">0</div>
+            <div class="hero-streak-label">سلسلة الأيام</div>
+          </div>
+        </div>
+
+        <div class="panel goal-panel">
+          <div class="goal-head">
+            <div class="goal-title"><span class="ic is-amber" data-icon="target"></span><h2>الهدف اليومي</h2></div>
+            <span class="goal-count" id="goal-count">0 / 10 سؤال</span>
+          </div>
+          <div class="goal-bar"><div class="goal-fill" id="goal-fill"></div></div>
+          <p class="goal-status" id="goal-status"></p>
+        </div>
+
+        <div class="panel stat-strip">
+          <div class="stat"><span class="stat-num is-amber" id="stat-xp">0</span><span class="stat-label">إجمالي النقاط</span></div>
+          <div class="stat"><span class="stat-num" id="stat-words">0</span><span class="stat-label">كلمات متعلَّمة</span></div>
+          <div class="stat"><span class="stat-num" id="stat-accuracy">—</span><span class="stat-label">الدقة</span></div>
+        </div>
+
+        <p class="data-note" id="data-note" hidden></p>
+      </section>
+
+      <!-- ============ تعلّم ============ -->
+      <section class="screen" id="screen-learn" data-screen="learn">
+        <div class="lesson">
+          <div id="quiz-view">
+            <div class="lesson-top">
+              <button class="icon-btn" id="btn-exit" type="button" aria-label="إنهاء الدرس"><span class="ic" data-icon="x"></span></button>
+              <div class="lesson-progress" id="lesson-progressbar" role="progressbar" aria-label="تقدم الدرس" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0">
+                <div class="lesson-progress-fill" id="lesson-progress-fill"></div>
+              </div>
+              <span class="lesson-count" id="lesson-count">1 / 10</span>
+            </div>
+
+            <div class="q-card panel">
+              <span class="q-tag" id="q-tag">اختر المعنى العربي</span>
+              <p class="q-prompt" id="q-prompt">ما معنى هذه الكلمة؟</p>
+              <div class="q-word" id="q-word" dir="ltr" lang="en">…</div>
+            </div>
+
+            <div class="answers" id="answers"></div>
+          </div>
+
+          <div id="summary-view" hidden>
+            <div class="panel summary">
+              <div class="ring-wrap">
+                <svg id="summary-ring" viewBox="0 0 120 120" aria-hidden="true">
+                  <circle class="ring-bg" cx="60" cy="60" r="52"/>
+                  <circle class="ring-fg" cx="60" cy="60" r="52"/>
+                </svg>
+                <div class="ring-center"><span id="summary-pct">0%</span><span class="ring-sub">الدقة</span></div>
+              </div>
+              <h2 class="summary-title">اكتمل الدرس!</h2>
+              <p class="summary-message" id="summary-message"></p>
+              <div class="summary-chips">
+                <div class="chip-stat"><span class="chip-num" id="summary-score">0 / 10</span><span class="chip-label">إجابات صحيحة</span></div>
+                <div class="chip-stat"><span class="chip-num is-amber" id="summary-xp">+0</span><span class="chip-label">نقاط</span></div>
+                <div class="chip-stat"><span class="chip-num"><span class="ic" data-icon="flame"></span><span id="summary-streak">0</span></span><span class="chip-label">سلسلة</span></div>
+              </div>
+              <div class="summary-actions">
+                <button class="btn btn-primary btn-lg" id="btn-summary-continue" type="button"><span class="ic" data-icon="book"></span>متابعة التعلّم</button>
+                <button class="btn btn-ghost" id="btn-summary-review" type="button"><span class="ic" data-icon="repeat"></span>مراجعة الأخطاء</button>
+                <button class="btn btn-ghost" id="btn-summary-home" type="button"><span class="ic" data-icon="home"></span>الرئيسية</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="dock" id="feedback-dock" role="status" aria-live="polite" hidden>
+            <div class="dock-info">
+              <p class="dock-title" id="dock-title"></p>
+              <p class="dock-sub" id="dock-sub"></p>
+            </div>
+            <button class="btn btn-primary" id="btn-continue" type="button">متابعة</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ مراجعة ============ -->
+      <section class="screen" id="screen-review" data-screen="review">
+        <header class="screen-head">
+          <h1>مراجعة الأخطاء</h1>
+          <p>تعود الكلمات التي أخطأت فيها إلى هنا حتى تتقنها.</p>
+        </header>
+        <div id="review-content"></div>
+      </section>
+
+      <!-- ============ التقدم ============ -->
+      <section class="screen" id="screen-progress" data-screen="progress">
+        <header class="screen-head">
+          <h1>التقدم</h1>
+          <p>كل ما أنجزته حتى الآن.</p>
+        </header>
+
+        <div class="panel progress-top">
+          <div class="ring-wrap">
+            <svg id="progress-ring" viewBox="0 0 120 120" aria-hidden="true">
+              <circle class="ring-bg" cx="60" cy="60" r="52"/>
+              <circle class="ring-fg" cx="60" cy="60" r="52"/>
+            </svg>
+            <div class="ring-center"><span id="progress-pct">—</span><span class="ring-sub">الدقة</span></div>
+          </div>
+          <dl class="stat-list">
+            <div class="stat-line"><dt>إجمالي الإجابات</dt><dd id="p-total">0</dd></div>
+            <div class="stat-line"><dt>إجابات صحيحة</dt><dd id="p-correct" class="is-jade">0</dd></div>
+            <div class="stat-line"><dt>إجابات خاطئة</dt><dd id="p-wrong" class="is-coral">0</dd></div>
+            <div class="stat-line"><dt>إجمالي النقاط</dt><dd id="p-xp" class="is-amber">0</dd></div>
+            <div class="stat-line"><dt>كلمات متعلَّمة</dt><dd id="p-words">0</dd></div>
+            <div class="stat-line"><dt>أفضل سلسلة</dt><dd id="p-best">0</dd></div>
+          </dl>
+        </div>
+
+        <div class="panel">
+          <h2 class="panel-title">هذا الأسبوع</h2>
+          <p class="panel-sub">عدد الإجابات في كل يوم</p>
+          <div class="bars" id="week-bars"></div>
+        </div>
+
+        <div class="panel">
+          <h2 class="panel-title">الكلمات المتعلَّمة<span class="big-count" id="p-words-big">0</span></h2>
+          <div class="word-cloud" id="word-cloud"></div>
+        </div>
+      </section>
+
+      <!-- ============ الإعدادات ============ -->
+      <section class="screen" id="screen-settings" data-screen="settings">
+        <header class="screen-head">
+          <h1>الإعدادات</h1>
+          <p>اضبط تمرينك اليومي.</p>
+        </header>
+
+        <div class="panel setting-panel">
+          <div class="setting-info">
+            <h2><span class="ic is-amber" data-icon="target"></span>الهدف اليومي</h2>
+            <p>كم سؤالاً تريد الإجابة عنه كل يوم.</p>
+          </div>
+          <div class="seg" id="goal-seg" role="group" aria-label="حجم الهدف اليومي">
+            <button class="seg-btn" type="button" data-goal="10" aria-pressed="true">10</button>
+            <button class="seg-btn" type="button" data-goal="20" aria-pressed="false">20</button>
+            <button class="seg-btn" type="button" data-goal="30" aria-pressed="false">30</button>
+          </div>
+        </div>
+
+        <div class="panel setting-panel">
+          <div class="setting-row">
+            <div class="setting-info">
+              <h2><span class="ic is-amber" data-icon="bell"></span>تنبيه يومي</h2>
+              <p>ذكّرني بالتدرب كل يوم.</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="reminder-toggle">
+              <span class="switch-track" aria-hidden="true"></span>
+              <span class="visually-hidden">تفعيل التنبيه اليومي</span>
+            </label>
+          </div>
+          <div class="reminder-controls">
+            <label for="reminder-time">وقت التنبيه داخل التطبيق</label>
+            <input type="time" id="reminder-time" value="18:00">
+          </div>
+          <p class="setting-status" id="reminder-status"></p>
+          <p class="setting-hint">التنبيه داخل التطبيق يصل فقط طالما الصفحة مفتوحة، وفي الوقت الذي تختاره. أما إشعار الهاتف (Push) فيُرسل عبر OneSignal يومياً في وقت ثابت (6 مساءً بتوقيت المستلم) حتى مع إغلاق التطبيق، ويُضبط من ملف GitHub Actions. على iOS يتطلب الأمر iOS 16.4+ وإضافة التطبيق إلى الشاشة الرئيسية.</p>
+        </div>
+
+        <div class="panel setting-panel">
+          <h2><span class="ic is-coral" data-icon="trash"></span>البيانات</h2>
+          <p>جميع بيانات تقدمك محفوظة في متصفحك (localStorage) ولا تُرسل إلى أي مكان.</p>
+          <button class="btn btn-danger" id="btn-reset" type="button">إعادة تعيين كل التقدم</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Mobile bottom navigation -->
+  <nav class="bottomnav" aria-label="التنقل الرئيسي">
+    <button type="button" data-nav="home" class="is-active"><span class="ic" data-icon="home"></span><span>الرئيسية</span></button>
+    <button type="button" data-nav="learn"><span class="ic" data-icon="book"></span><span>تعلّم</span></button>
+    <button type="button" data-nav="review"><span class="ic" data-icon="repeat"></span><span>مراجعة</span></button>
+    <button type="button" data-nav="progress"><span class="ic" data-icon="chart"></span><span>التقدم</span></button>
+    <button type="button" data-nav="settings"><span class="ic" data-icon="sliders"></span><span>الإعدادات</span></button>
+  </nav>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
