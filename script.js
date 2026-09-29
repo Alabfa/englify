@@ -17,7 +17,7 @@ const REMINDER_TIME = '18:00'; // 6:00 مساءً — ثابت لجميع الم
 const ONESIGNAL_APP_ID = 'e39e7961-871c-4d5f-bb8f-15bcfefc952b';
 
 /* ---------- أدوات صغيرة ---------- */
-const $  = (sel, root = document) => root.querySelector(sel);
+const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
 function el(tag, className, text) {
@@ -142,7 +142,7 @@ const ICONS = {
   repeat: '<path d="m17 2.5 4 4-4 4"/><path d="M21 6.5H8a5 5 0 0 0-5 5v1"/><path d="m7 21.5-4-4 4-4"/><path d="M3 17.5h13a5 5 0 0 0 5-5v-1"/>',
   chart: '<path d="M4 20h16"/><path d="M7 20v-6"/><path d="M12 20V6"/><path d="M17 20v-9"/>',
   sliders: '<path d="M4 7h8"/><circle cx="15.5" cy="7" r="2.2"/><path d="M4 17h3"/><circle cx="10.5" cy="17" r="2.2"/><path d="M14 17h6"/>',
-  flame: '<path fill="currentColor" stroke="none" d="M12 2.4c.7 3-.8 4.8-2.1 6.4C8.5 10.5 7 12.4 7 14.7 7 18.2 9.2 20.7 12 20.7s5-2.5 5-6c0-1.6-.6-3-1.4-4.2-.5 1.2-1.4 2.1-2.6 2.5 1-2.6.4-5.4-1-7.5-.6-.9-1.2-1.9-1-3.1z"/>',
+  flame: '<path class="flame-outer" stroke="none" d="M12 2.4c.7 3-.8 4.8-2.1 6.4C8.5 10.5 7 12.4 7 14.7 7 18.2 9.2 20.7 12 20.7s5-2.5 5-6c0-1.6-.6-3-1.4-4.2-.5 1.2-1.4 2.1-2.6 2.5 1-2.6.4-5.4-1-7.5-.6-.9-1.2-1.9-1-3.1z"/><path class="flame-core" stroke="none" d="M12 20.7c-1.8 0-3.1-1.5-3.1-3.4 0-1.4.8-2.5 1.7-3.6.6-.8 1.1-1.6 1.4-2.7 1 1.6 3.1 3 3.1 6.3 0 1.9-1.3 3.4-3.1 3.4z"/>',
   x: '<path d="M6 6l12 12"/><path d="M18 6 6 18"/>',
   check: '<path d="M4.5 12.8 9.6 18 19.5 6.8"/>',
   play: '<path fill="currentColor" stroke="none" d="M8 5v14l11-7z"/>',
@@ -413,9 +413,9 @@ function showSummary() {
 
   $('#summary-message').textContent =
     pct === 100 ? 'ممتاز! أداء مثالي.' :
-    pct >= 80   ? 'رائع! تقدّم ممتاز.' :
-    pct >= 50   ? 'أحسنت — واصل على هذا المعدل!' :
-                  'واصل التدرب، ستتحسن بسرعة!';
+      pct >= 80 ? 'رائع! تقدّم ممتاز.' :
+        pct >= 50 ? 'أحسنت — واصل على هذا المعدل!' :
+          'واصل التدرب، ستتحسن بسرعة!';
   $('#summary-score').textContent = `${lesson.correct} / ${total}`;
   $('#summary-pct').textContent = pct + '%';
   $('#summary-xp').textContent = '+' + lesson.correct * XP_PER_CORRECT;
@@ -438,10 +438,16 @@ function setRing(svg, pct) {
 
 /* ---------- عرض الشاشات ---------- */
 function updateStreakChips() {
+  document.body.dataset.heat = heatTier();   // ← السطر الجديد
   $('#topbar-streak-num').textContent = state.streak;
   $('#sidebar-streak').textContent = state.streak;
   $('#sidebar-xp').textContent = state.xp;
   $('#home-streak').textContent = state.streak;
+}
+
+function heatTier() {
+  const s = state.streak;
+  return s === 0 ? 'cold' : s < 7 ? 'lit' : s < 30 ? 'blaze' : 'inferno';
 }
 
 function accuracyPct() {
@@ -598,8 +604,8 @@ function updateReminderStatus() {
     p === 'granted' ? (state.reminderEnabled
       ? 'التنبيهات مفعّلة — يصلك إشعار يومي الساعة 6:00 مساءً.'
       : 'الإذن ممنوح، فعّل التنبيه لاستخدامه.') :
-    p === 'denied'  ? 'الإشعارات محظورة في إعدادات المتصفح.' :
-                      'سنطلب إذن الإشعارات عند التفعيل.';
+      p === 'denied' ? 'الإشعارات محظورة في إعدادات المتصفح.' :
+        'سنطلب إذن الإشعارات عند التفعيل.';
 }
 
 /* التنبيه داخل التطبيق — يعمل فقط طالما الصفحة مفتوحة */
