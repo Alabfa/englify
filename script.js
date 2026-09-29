@@ -12,6 +12,8 @@ const STORAGE_KEY = 'kalima-state-v1'; // تُرك كما هو للحفاظ عل
 const LESSON_LENGTH = 10;
 const XP_PER_CORRECT = 10;
 
+const REMINDER_TIME = '18:00'; // 6:00 مساءً — ثابت لجميع المستخدمين
+
 const ONESIGNAL_APP_ID = 'e39e7961-871c-4d5f-bb8f-15bcfefc952b';
 
 /* ---------- أدوات صغيرة ---------- */
@@ -55,7 +57,7 @@ const DEFAULTS = {
   dailyProgress: 0, dailyDate: today(), dailyGoal: 10,
   totalQuestions: 0, correctAnswers: 0, incorrectAnswers: 0,
   learnedWords: [], mistakes: [], dailyLog: {},
-  reminderEnabled: false, reminderTime: '18:00', lastReminderFired: null,
+  reminderEnabled: false, lastReminderFired: null,
 };
 
 let state = loadState();
@@ -581,9 +583,6 @@ function renderSettings() {
     b.setAttribute('aria-pressed', String(on));
   });
   $('#reminder-toggle').checked = state.reminderEnabled;
-  const timeInput = $('#reminder-time');
-  timeInput.value = state.reminderTime;
-  timeInput.disabled = !state.reminderEnabled;
   updateReminderStatus();
 }
 
@@ -591,15 +590,15 @@ function renderSettings() {
 function updateReminderStatus() {
   const s = $('#reminder-status');
   if (!('Notification' in window)) {
-    s.textContent = 'متصفحك لا يدعم الإشعارات. سيظهر التنبيه داخل التطبيق أثناء فتحه بدلاً من ذلك.';
+    s.textContent = 'متصفحك لا يدعم الإشعارات، سيظهر التنبيه داخل التطبيق عند فتحه.';
     return;
   }
   const p = Notification.permission;
   s.textContent =
     p === 'granted' ? (state.reminderEnabled
-      ? `التنبيهات مفعّلة — تنبيه داخل التطبيق في ${state.reminderTime}، وإشعار هاتف يومي حتى مع إغلاق التطبيق.`
-      : 'الإذن بالإشعارات ممنوح. فعّل التنبيه لاستخدامه.') :
-    p === 'denied'  ? 'الإشعارات محظورة في إعدادات المتصفح. سيظهر التنبيه داخل التطبيق بدلاً منها.' :
+      ? 'التنبيهات مفعّلة — يصلك إشعار يومي الساعة 6:00 مساءً.'
+      : 'الإذن ممنوح، فعّل التنبيه لاستخدامه.') :
+    p === 'denied'  ? 'الإشعارات محظورة في إعدادات المتصفح.' :
                       'سنطلب إذن الإشعارات عند التفعيل.';
 }
 
@@ -607,7 +606,7 @@ function updateReminderStatus() {
 function checkReminder() {
   if (!state.reminderEnabled) return;
   const now = new Date();
-  if (`${pad(now.getHours())}:${pad(now.getMinutes())}` !== state.reminderTime) return;
+  if (`${pad(now.getHours())}:${pad(now.getMinutes())}` !== REMINDER_TIME) return;
   if (state.lastReminderFired === today()) return;
   state.lastReminderFired = today();
   saveState();
@@ -668,12 +667,6 @@ function bindEvents() {
     }
     renderSettings();
   });
-  $('#reminder-time').addEventListener('change', e => {
-    state.reminderTime = e.target.value || '18:00';
-    state.lastReminderFired = null;
-    saveState();
-    updateReminderStatus();
-  });
 
   /* إعادة التعيين على خطوتين — بدون نوافذ confirm */
   const resetBtn = $('#btn-reset');
@@ -691,7 +684,7 @@ function bindEvents() {
       armTimer = setTimeout(disarm, 4000);
     } else {
       clearTimeout(armTimer);
-      const keep = { reminderEnabled: state.reminderEnabled, reminderTime: state.reminderTime };
+      const keep = { reminderEnabled: state.reminderEnabled };
       state = { ...DEFAULTS, dailyDate: today(), ...keep };
       saveState();
       disarm();

@@ -362,17 +362,6 @@ input { font-family: inherit; }
 .switch input:checked + .switch-track { background: var(--jade); border-color: var(--jade); }
 .switch input:checked + .switch-track::after { transform: translateX(-23px); background: #fff; }
 .switch input:focus-visible + .switch-track { outline: 2px solid var(--amber); outline-offset: 2px; }
-.reminder-controls { display: flex; align-items: center; gap: 12px; margin-top: 16px; flex-wrap: wrap; }
-.reminder-controls label { font-weight: 600; font-size: .93rem; }
-input[type="time"] {
-  padding: 8px 12px; border-radius: 10px;
-  background: var(--surface-2); border: 1px solid var(--line); color: var(--text);
-  font-size: .95rem; direction: ltr;
-}
-input[type="time"]:disabled { opacity: .45; }
-.setting-status { margin-top: 14px; padding: 10px 14px; border-radius: 10px; background: var(--surface-2); color: var(--text); font-size: .9rem; }
-.setting-hint { margin-top: 10px; color: var(--muted); font-size: .82rem; }
-#btn-reset { margin-top: 16px; }
 
 /* ---------- التنبيه العائم ---------- */
 .toast {
