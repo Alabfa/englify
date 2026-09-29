@@ -12,8 +12,7 @@ const STORAGE_KEY = 'kalima-state-v1'; // تُرك كما هو للحفاظ عل
 const LESSON_LENGTH = 10;
 const XP_PER_CORRECT = 10;
 
-/* ضع هنا App ID من لوحة OneSignal (اتركه كما هو إذا لم تضبط Push بعد) */
-const ONESIGNAL_APP_ID = 'YOUR_APP_ID';
+const ONESIGNAL_APP_ID = 'e39e7961-871c-4d5f-bb8f-15bcfefc952b';
 
 /* ---------- أدوات صغيرة ---------- */
 const $  = (sel, root = document) => root.querySelector(sel);

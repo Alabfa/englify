@@ -16,7 +16,7 @@ jobs:
             -H "Authorization: Basic ${{ secrets.ONESIGNAL_KEY }}" \
             -H "Content-Type: application/json; charset=utf-8" \
             -d '{
-              "app_id": "YOUR_APP_ID",
+              "app_id": "e39e7961-871c-4d5f-bb8f-15bcfefc952b",
               "filters": [{"field": "tag", "key": "push", "relation": "exists"}],
               "headings": {"en": "Englify"},
               "contents": {"en": "حان وقت التدرب على الإنجليزية!"},
