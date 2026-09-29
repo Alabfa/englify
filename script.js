@@ -2,19 +2,21 @@
 
 /* ============================================================
    Englify — منطق التطبيق
-   تُحمَّل المفردات من words.json، وتُخزَّن بيانات المستخدم
-   في localStorage تحت مفتاح واحد. بدون أُطر عمل أو خادم.
-   إشعارات الهاتف (Push) تُدار عبر OneSignal + GitHub Actions.
+   المفردات من words.json، والحالة في localStorage.
+   يشمل: تكرار متباعد (SRS)، خلط جديد/مراجعة، استكمال الدرس
+   المتقطع، إنجازات، قاموس، احتفالات — بلا أُطر أو خادم.
    ============================================================ */
 
 /* ---------- الإعدادات ---------- */
-const STORAGE_KEY = 'kalima-state-v1'; // تُرك كما هو للحفاظ على بيانات المستخدمين الحاليين
+const STORAGE_KEY = 'kalima-state-v1'; // يطابق السكربت المضمّن في <head>
 const LESSON_LENGTH = 10;
 const XP_PER_CORRECT = 10;
+const REMINDER_TIME = '18:00';   // 6:00 مساءً — ثابت
+const REVIEW_PER_LESSON = 3;     // الحد الأقصى لكلمات المراجعة في الدرس العادي
+const SRS_INTERVALS = [1, 7, 30]; // يتخرّج بعد 3 إجابات صحيحة بدلاً من 5
 
-const REMINDER_TIME = '18:00'; // 6:00 مساءً — ثابت لجميع المستخدمين
-
-const ONESIGNAL_APP_ID = 'e39e7961-871c-4d5f-bb8f-15bcfefc952b';
+/* ضع هنا App ID من لوحة OneSignal */
+const ONESIGNAL_APP_ID = 'YOUR_APP_ID';
 
 /* ---------- أدوات صغيرة ---------- */
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -49,6 +51,11 @@ const pad = n => String(n).padStart(2, '0');
 const dayStamp = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 const today = () => dayStamp(new Date());
 const daysAgo = n => { const d = new Date(); d.setDate(d.getDate() - n); return dayStamp(d); };
+const daysFromNow = n => { const d = new Date(); d.setDate(d.getDate() + n); return dayStamp(d); };
+function daysUntil(dateStr) {
+  const ms = new Date(dateStr + 'T12:00:00') - new Date(today() + 'T12:00:00');
+  return Math.max(0, Math.round(ms / 86400000));
+}
 
 /* ---------- الحالة المحفوظة ---------- */
 const DEFAULTS = {
@@ -58,6 +65,10 @@ const DEFAULTS = {
   totalQuestions: 0, correctAnswers: 0, incorrectAnswers: 0,
   learnedWords: [], mistakes: [], dailyLog: {},
   reminderEnabled: false, lastReminderFired: null,
+  theme: 'system',
+  lessonsDone: 0, perfectLesson: false, masteredCount: 0,
+  goalReachedOnce: false,
+  achievements: {}, savedLesson: null,
 };
 
 let state = loadState();
@@ -75,13 +86,36 @@ function saveState() {
   try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch { /* التخزين غير متاح */ }
 }
 
+/* ترقية بيانات قديمة: أخطاء بلا حقول SRS */
+function migrate() {
+  let changed = false;
+  if (Array.isArray(state.mistakes)) {
+    for (const m of state.mistakes) {
+      if (typeof m.stage !== 'number') { m.stage = 0; changed = true; }
+      if (typeof m.due !== 'string') { m.due = today(); changed = true; }
+    }
+  } else { state.mistakes = []; changed = true; }
+  if (changed) saveState();
+}
+
 /* تصفير العدادات اليومية عند تغيّر اليوم */
 function rollDaily() {
   if (state.dailyDate !== today()) {
     state.dailyDate = today();
     state.dailyProgress = 0;
+    pruneDailyLog();
     saveState();
   }
+}
+
+/* الاحتفاظ بآخر 30 يوماً فقط من سجل النشاط */
+function pruneDailyLog() {
+  const keep = new Set([...Array(30)].map((_, i) => daysAgo(i)));
+  let changed = false;
+  for (const d of Object.keys(state.dailyLog)) {
+    if (!keep.has(d)) { delete state.dailyLog[d]; changed = true; }
+  }
+  if (changed) saveState();
 }
 
 /* لا تبقى السلسلة إلا إذا كان آخر درس اليوم أو أمس */
@@ -96,7 +130,7 @@ function refreshStreak() {
 function completeStreakDay() {
   const t = today();
   if (state.lastLessonDate === t) {
-    /* حُسبت اليوم بالفعل — تبقى كما هي */
+    /* حُسبت اليوم بالفعل */
   } else if (state.lastLessonDate === daysAgo(1)) {
     state.streak++;
   } else {
@@ -135,7 +169,7 @@ function showDataError(err) {
   $('#btn-start').disabled = true;
 }
 
-/* ---------- الأيقونات (SVG مضمّن، تُحقن مرة واحدة) ---------- */
+/* ---------- الأيقونات (SVG مضمّن) ---------- */
 const ICONS = {
   home: '<path d="M3 11.3 12 3l9 8.3"/><path d="M5.5 10v10.5h13V10"/><path d="M10 20.5v-6h4v6"/>',
   book: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15.5H6.5A2.5 2.5 0 0 0 4 21V5.5z"/><path d="M20 18.5H6.5A2.5 2.5 0 0 0 4 21"/>',
@@ -150,6 +184,13 @@ const ICONS = {
   target: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.2"/>',
   bell: '<path d="M18 9.5a6 6 0 1 0-12 0c0 5.5-2 7-2 7h16s-2-1.5-2-7"/><path d="M10.3 20.5a2 2 0 0 0 3.4 0"/>',
   trash: '<path d="M4 7h16"/><path d="M9 7V5h6v2"/><path d="M6 7l1 13h10l1-13"/><path d="M10 11v5M14 11v5"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+  system: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
+  list: '<path d="M8 6h13M8 12h13M8 18h13"/><path d="M3.5 6h.01M3.5 12h.01M3.5 18h.01"/>',
+  trophy: '<path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 3h10v6a5 5 0 0 1-10 0V3z"/><path d="M7 5H4v1a3 3 0 0 0 3 3"/><path d="M17 5h3v1a3 3 0 0 1-3 3"/>',
+  star: '<path d="M12 3l2.7 5.7 6.3.9-4.6 4.4 1.1 6.3L12 17.4 6.5 20.3l1.1-6.3L3 9.6l6.3-.9z"/>',
+  lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
 };
 
 function iconEl(name, extraClass) {
@@ -168,6 +209,15 @@ function makeMark(name) {
   return mark;
 }
 
+/* ---------- المظهر ---------- */
+function applyTheme() {
+  const mq = matchMedia('(prefers-color-scheme: light)');
+  const resolved = state.theme === 'system' ? (mq.matches ? 'light' : 'dark') : state.theme;
+  document.documentElement.dataset.theme = resolved;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.content = resolved === 'light' ? '#f2efe7' : '#0b1220';
+}
+
 /* ---------- Push عبر OneSignal ---------- */
 window.OneSignalDeferred = window.OneSignalDeferred || [];
 
@@ -180,7 +230,6 @@ function pushConfigured() {
   return ONESIGNAL_APP_ID && !ONESIGNAL_APP_ID.startsWith('YOUR_');
 }
 
-/* تُستدعى عند تفعيل المستخدم للتنبيه — تطلب الإذن وتسجّل وسم الاشتراك */
 function enablePushReminder() {
   if (!pushConfigured()) return;
   if (isIOSDevice && !isStandalone) {
@@ -198,7 +247,6 @@ function enablePushReminder() {
   });
 }
 
-/* تُستدعى عند كل فتح — تعيد مزامنة الوسم إذا كان التنبيه مفعّلاً */
 function syncPushTag() {
   if (!pushConfigured() || !state.reminderEnabled) return;
   OneSignalDeferred.push(async OneSignal => {
@@ -207,6 +255,110 @@ function syncPushTag() {
       OneSignal.User.addTag('push', 'on');
     } catch { /* تجاهل */ }
   });
+}
+
+/* ---------- نظام التكرار المتباعد (SRS) ---------- */
+/* خطأ → المراجعة غداً. إجابة صحيحة → المرحلة التالية (1←3←7←14←30) → التخرّج بإتقانها */
+function addMistake(word, meaning) {
+  const found = state.mistakes.find(m => m.word === word);
+  if (found) {
+    found.count = (found.count || 1) + 1;
+    found.stage = 0;            // فشل = عودة إلى بداية الجدول
+    found.due = daysFromNow(1);
+  } else {
+    state.mistakes.push({ word, meaning, count: 1, stage: 0, due: daysFromNow(1) });
+  }
+}
+
+function promoteMistake(word) {
+  const found = state.mistakes.find(m => m.word === word);
+  if (!found) return false;
+  found.stage++;
+  if (found.stage >= SRS_INTERVALS.length) {
+    state.mistakes = state.mistakes.filter(m => m.word !== word);
+    state.masteredCount = (state.masteredCount || 0) + 1;
+    return true; // تخرّجت — أُتقنت
+  }
+  found.due = daysFromNow(SRS_INTERVALS[found.stage]);
+  return false;
+}
+
+function dueMistakes() {
+  const t = today();
+  return state.mistakes.filter(m => m.due <= t);
+}
+
+/* ---------- الإنجازات ---------- */
+const ACHIEVEMENTS = [
+  { id: 'first-step', icon: 'play', name: 'الخطوة الأولى', desc: 'أكمل درسك الأول' },
+  { id: 'perfect', icon: 'star', name: 'درس مثالي', desc: 'أجب عن 10/10 في درس كامل' },
+  { id: 'goal-first', icon: 'target', name: 'هدف اليوم', desc: 'حقق هدفك اليومي لأول مرة' },
+  { id: 'streak-7', icon: 'flame', name: 'أسبوع كامل', desc: 'حافظ على سلسلة 7 أيام' },
+  { id: 'streak-30', icon: 'flame', name: 'شهر من الالتزام', desc: 'حافظ على سلسلة 30 يوماً' },
+  { id: 'xp-100', icon: 'zap', name: 'أول مئة', desc: 'اجمع 100 نقطة' },
+  { id: 'xp-500', icon: 'zap', name: 'جامع النقاط', desc: 'اجمع 500 نقطة' },
+  { id: 'words-25', icon: 'book', name: '25 كلمة', desc: 'تعلّم 25 كلمة' },
+  { id: 'words-100', icon: 'book', name: 'قاموس متنامٍ', desc: 'تعلّم 100 كلمة' },
+  { id: 'accuracy-90', icon: 'chart', name: 'دقة عالية', desc: 'دقة 90% بعد 50 سؤالاً' },
+  { id: 'master-10', icon: 'trophy', name: 'مُتقِن', desc: 'أتقنت 10 كلمات من المراجعة' },
+];
+
+function checkAchievements() {
+  const acc = state.totalQuestions ? state.correctAnswers / state.totalQuestions * 100 : 0;
+  const rules = {
+    'first-step': state.lessonsDone >= 1,
+    'perfect': state.perfectLesson === true,
+    'goal-first': state.goalReachedOnce === true,
+    'streak-7': state.bestStreak >= 7,
+    'streak-30': state.bestStreak >= 30,
+    'xp-100': state.xp >= 100,
+    'xp-500': state.xp >= 500,
+    'words-25': state.learnedWords.length >= 25,
+    'words-100': state.learnedWords.length >= 100,
+    'accuracy-90': state.totalQuestions >= 50 && acc >= 90,
+    'master-10': (state.masteredCount || 0) >= 10,
+  };
+  for (const a of ACHIEVEMENTS) {
+    if (!state.achievements[a.id] && rules[a.id]) {
+      state.achievements[a.id] = today();
+      toast(`إنجاز جديد — ${a.name}!`);
+    }
+  }
+}
+
+/* ---------- الاحتفالات (قصاصات ورقية) ---------- */
+function confetti() {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const c = document.getElementById('confetti-canvas');
+  const ctx = c.getContext('2d');
+  c.width = innerWidth; c.height = innerHeight;
+  const colors = ['#ffb13d', '#5cd0ff', '#3ecf8e', '#ff6b6b', '#f3f0e8'];
+  const parts = Array.from({ length: 90 }, () => ({
+    x: Math.random() * c.width,
+    y: -20 - Math.random() * c.height * 0.3,
+    w: 6 + Math.random() * 6,
+    h: 8 + Math.random() * 8,
+    vy: 2.2 + Math.random() * 2.8,
+    vx: -1.2 + Math.random() * 2.4,
+    rot: Math.random() * Math.PI,
+    vr: -0.12 + Math.random() * 0.24,
+    color: colors[Math.floor(Math.random() * colors.length)],
+  }));
+  const t0 = performance.now();
+  function frame(t) {
+    ctx.clearRect(0, 0, c.width, c.height);
+    let alive = false;
+    for (const p of parts) {
+      p.y += p.vy; p.x += p.vx; p.rot += p.vr;
+      if (p.y < c.height + 20) alive = true;
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.fillStyle = p.color; ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+      ctx.restore();
+    }
+    if (alive && t - t0 < 3200) requestAnimationFrame(frame);
+    else ctx.clearRect(0, 0, c.width, c.height);
+  }
+  requestAnimationFrame(frame);
 }
 
 /* ---------- التنقل ---------- */
@@ -220,6 +372,7 @@ function navigate(name) {
   window.scrollTo({ top: 0 });
   if (name === 'home') renderHome();
   if (name === 'review') renderReview();
+  if (name === 'dictionary') renderDictionary();
   if (name === 'progress') renderProgress();
   if (name === 'settings') renderSettings();
 }
@@ -252,21 +405,65 @@ function buildQuestion(wordObj, forcedType) {
   return { word: wordObj.word, meaning: wordObj.meaning, type, answer, options: shuffle([answer, ...distractors]) };
 }
 
+function reviewQuestion(wordObj, forcedType) {
+  const q = buildQuestion(wordObj, forcedType);
+  q.source = 'review';
+  return q;
+}
+
 /* ---------- محرك الدرس ---------- */
 const lesson = { active: false, items: [], index: 0, correct: 0, answered: false, kind: 'normal' };
 
+/* درس عادي = حتى 3 كلمات مراجعة مستحقة + الباقي كلمات جديدة */
 function startNormalLesson() {
   if (!vocabulary.length) {
     toast('تعذّر تحميل words.json — راجع الملاحظة في الصفحة الرئيسية');
     return;
   }
+  state.savedLesson = null;
+  const used = new Set();
   const items = [];
-  let bag = [];
+
+  for (const m of shuffle(dueMistakes())) {
+    if (items.length >= REVIEW_PER_LESSON) break;
+    const v = vocabMap.get(m.word);
+    if (!v || used.has(v.word)) continue;
+    used.add(v.word);
+    items.push(reviewQuestion(v));
+  }
+
+  const fresh = shuffle(vocabulary.filter(w => !used.has(w.word) && !state.learnedWords.includes(w.word)));
+  const rest = shuffle(vocabulary.filter(w => !used.has(w.word) && state.learnedWords.includes(w.word)));
+  let bag = [...fresh, ...rest];
+  let allowDup = false;
+
   while (items.length < LESSON_LENGTH) {
-    if (!bag.length) bag = shuffle(vocabulary); // إعادة الملء فقط إذا كانت المفردات أقل من 10
-    items.push(buildQuestion(bag.pop()));
+    if (!bag.length) {
+      const unused = shuffle(vocabulary.filter(w => !used.has(w.word)));
+      bag = unused.length ? unused : shuffle(vocabulary); // مفردات أقل من طول الدرس → اسمح بالتكرار
+      allowDup = !unused.length;
+    }
+    const w = bag.pop();
+    if (used.has(w.word) && !allowDup) continue;
+    used.add(w.word);
+    items.push(buildQuestion(w));
   }
   startLesson(items, 'normal');
+}
+
+/* درس مراجعة: المستحق أولاً ثم الأقرب موعداً */
+function startReviewLesson() {
+  const t = today();
+  const due = shuffle(state.mistakes.filter(m => m.due <= t));
+  const upcoming = state.mistakes.filter(m => m.due > t)
+    .sort((a, b) => (a.due < b.due ? -1 : 1));
+  const picked = [...due, ...upcoming].slice(0, LESSON_LENGTH)
+    .map(m => vocabMap.get(m.word))
+    .filter(Boolean)
+    .map(v => reviewQuestion(v));
+  if (!picked.length) return toast('لا توجد كلمات للمراجعة');
+  state.savedLesson = null;
+  startLesson(picked, 'review');
 }
 
 function startLesson(items, kind) {
@@ -275,6 +472,24 @@ function startLesson(items, kind) {
   $('#quiz-view').hidden = false;
   navigate('learn');
   renderQuestion();
+}
+
+/* استكمال درس متقطع */
+function resumeLesson() {
+  const s = state.savedLesson;
+  if (!s) return;
+  Object.assign(lesson, { active: true, items: s.items, index: s.next, correct: s.correct, answered: false, kind: s.kind });
+  $('#summary-view').hidden = true;
+  $('#quiz-view').hidden = false;
+  navigate('learn');
+  renderQuestion();
+}
+
+/* حفظ نقطة الاستكمال بعد كل إجابة */
+function saveSession() {
+  const next = lesson.index + 1;
+  state.savedLesson = next >= lesson.items.length ? null
+    : { items: lesson.items, next, correct: lesson.correct, kind: lesson.kind, date: today() };
 }
 
 function renderQuestion() {
@@ -293,6 +508,7 @@ function renderQuestion() {
   const tag = $('#q-tag');
   tag.textContent = en2ar ? 'اختر المعنى العربي' : 'اختر الكلمة الإنجليزية';
   tag.classList.toggle('is-ar', !en2ar);
+  $('#q-src').hidden = q.source !== 'review';
   $('#q-prompt').textContent = en2ar ? 'ما معنى هذه الكلمة؟' : 'ما الكلمة الإنجليزية المقابلة؟';
   const wordEl = $('#q-word');
   wordEl.textContent = en2ar ? q.word : q.meaning;
@@ -341,17 +557,25 @@ function answerQuestion(btn, chosen) {
   state.dailyProgress++;
   state.dailyLog[today()] = (state.dailyLog[today()] || 0) + 1;
 
+  let masteredNow = false;
   if (correct) {
     lesson.correct++;
     state.correctAnswers++;
     state.xp += XP_PER_CORRECT;
     if (!state.learnedWords.includes(q.word)) state.learnedWords.push(q.word);
-    if (lesson.kind === 'review') reduceMistake(q.word);
+    masteredNow = promoteMistake(q.word); // إجابة صحيحة تقدّم جدول المراجعة (في أي نوع درس)
     spawnXpFloat();
+    if (state.dailyProgress === state.dailyGoal && !state.goalReachedOnce) {
+      state.goalReachedOnce = true;
+      confetti(); // لحظة احتفال: تحقيق هدف اليوم
+    }
   } else {
     state.incorrectAnswers++;
     addMistake(q.word, q.meaning);
   }
+
+  checkAchievements();
+  saveSession();
   saveState();
 
   /* شريط التغذية الراجعة */
@@ -363,9 +587,13 @@ function answerQuestion(btn, chosen) {
   const sub = $('#dock-sub');
   sub.innerHTML = '';
   if (correct) {
-    sub.textContent = lesson.kind === 'review'
-      ? 'خطأ واحد أقل في قائمتك.'
-      : `+${XP_PER_CORRECT} نقاط خبرة`;
+    if (masteredNow) {
+      sub.textContent = `أتقنت "${q.word}" — خرجت من قائمة المراجعة!`;
+    } else if (lesson.kind === 'review') {
+      sub.textContent = 'تقدّمت خطوة في جدول مراجعتها.';
+    } else {
+      sub.textContent = `+${XP_PER_CORRECT} نقاط خبرة`;
+    }
   } else {
     sub.append('الإجابة الصحيحة: ');
     const strong = el('strong', null, q.answer);
@@ -384,27 +612,19 @@ function spawnXpFloat() {
   setTimeout(() => f.remove(), 950);
 }
 
-function addMistake(word, meaning) {
-  const found = state.mistakes.find(m => m.word === word);
-  if (found) found.count++;
-  else state.mistakes.push({ word, meaning, count: 1 });
-}
-
-function reduceMistake(word) {
-  const found = state.mistakes.find(m => m.word === word);
-  if (!found) return;
-  found.count--;
-  if (found.count <= 0) state.mistakes = state.mistakes.filter(m => m.word !== word);
-}
-
 /* ---------- ملخص الدرس ---------- */
 function showSummary() {
   lesson.active = false;
-  completeStreakDay();
-  saveState();
+  state.savedLesson = null;
+  state.lessonsDone = (state.lessonsDone || 0) + 1;
 
   const total = lesson.items.length;
   const pct = Math.round((lesson.correct / total) * 100);
+  if (total >= LESSON_LENGTH && pct === 100) state.perfectLesson = true;
+
+  completeStreakDay();
+  checkAchievements();
+  saveState();
 
   $('#quiz-view').hidden = true;
   $('#feedback-dock').hidden = true;
@@ -422,6 +642,7 @@ function showSummary() {
   $('#summary-streak').textContent = state.streak;
   setRing($('#summary-ring'), pct);
   updateStreakChips();
+  if (pct === 100) confetti(); // لحظة احتفال: درس مثالي
 }
 
 function setRing(svg, pct) {
@@ -438,16 +659,12 @@ function setRing(svg, pct) {
 
 /* ---------- عرض الشاشات ---------- */
 function updateStreakChips() {
-  document.body.dataset.heat = heatTier();   // ← السطر الجديد
-  $('#topbar-streak-num').textContent = state.streak;
-  $('#sidebar-streak').textContent = state.streak;
-  $('#sidebar-xp').textContent = state.xp;
-  $('#home-streak').textContent = state.streak;
-}
-
-function heatTier() {
   const s = state.streak;
-  return s === 0 ? 'cold' : s < 7 ? 'lit' : s < 30 ? 'blaze' : 'inferno';
+  document.body.dataset.heat = s === 0 ? 'cold' : s < 7 ? 'lit' : s < 30 ? 'blaze' : 'inferno';
+  $('#topbar-streak-num').textContent = s;
+  $('#sidebar-streak').textContent = s;
+  $('#sidebar-xp').textContent = state.xp;
+  $('#home-streak').textContent = s;
 }
 
 function accuracyPct() {
@@ -479,6 +696,14 @@ function renderHome() {
   pill.textContent = mc;
   $('#review-badge').textContent = mc || '';
 
+  /* شريط استكمال الدرس المتقطع */
+  const s = state.savedLesson;
+  $('#resume-banner').hidden = !s;
+  if (s) {
+    $('#resume-info').textContent =
+      `السؤال ${s.next + 1} من ${s.items.length} — ${countAr(s.correct, ['إجابة صحيحة واحدة', 'إجابتان صحيحتان', 'إجابات صحيحة', 'إجابة صحيحة'])} حتى الآن`;
+  }
+
   updateStreakChips();
 }
 
@@ -495,46 +720,104 @@ function renderReview() {
     return;
   }
 
+  const t = today();
+  const due = dueMistakes();
+
   const head = el('div', 'review-head');
   const all = el('button', 'btn btn-primary');
   all.type = 'button';
-  all.append(iconEl('play'), el('span', null, `تدرّب على الكل (${Math.min(state.mistakes.length, LESSON_LENGTH)})`));
-  all.addEventListener('click', () => {
-    const items = shuffle(state.mistakes).slice(0, LESSON_LENGTH)
-      .map(m => vocabMap.get(m.word))
-      .filter(Boolean)
-      .map(w => buildQuestion(w));
-    if (!items.length) return toast('هذه الكلمات لم تعد موجودة في words.json');
-    startLesson(items, 'review');
-  });
+  all.append(iconEl('play'), el('span', null, due.length
+    ? `مراجعة المستحق (${Math.min(due.length, LESSON_LENGTH)})`
+    : `تدرّب مبكراً (${Math.min(state.mistakes.length, LESSON_LENGTH)})`));
+  all.addEventListener('click', startReviewLesson);
   head.append(all);
-  if (state.mistakes.length > LESSON_LENGTH) {
-    head.append(el('p', 'review-note', `لديك ${state.mistakes.length} كلمة محفوظة — تُدرَّب على ${LESSON_LENGTH} في كل مرة.`));
-  }
+  head.append(el('p', 'review-note', due.length
+    ? countAr(due.length, ['كلمة واحدة مستحقة اليوم', 'كلمتان مستحقتان اليوم', 'كلمات مستحقة اليوم', 'كلمة مستحقة اليوم'])
+    : 'لا شيء مستحق اليوم — جدول المراجعة يسير كما يجب.'));
   box.append(head);
 
+  const sorted = [...state.mistakes].sort((a, b) => (a.due < b.due ? -1 : a.due > b.due ? 1 : 0));
   const list = el('div', 'mistake-list');
-  [...state.mistakes].sort((a, b) => b.count - a.count).forEach(m => {
+  sorted.forEach(m => {
+    const isDue = m.due <= t;
     const row = el('div', 'mistake-row');
+
     const info = el('div', 'mistake-info');
     const w = el('div', 'mistake-word', m.word); w.dir = 'ltr'; w.lang = 'en';
     const mean = el('div', 'mistake-meaning', m.meaning); mean.dir = 'rtl'; mean.lang = 'ar';
     info.append(w, mean);
-    const badge = el('span', 'mistake-count', `×${m.count}`);
-    badge.title = `عدد الأخطاء: ${m.count}`;
+
+    const meta = el('div', 'mistake-meta');
+    const dots = el('span', 'srs-dots');
+    dots.title = `المرحلة ${m.stage + 1} من ${SRS_INTERVALS.length}`;
+    for (let i = 0; i < SRS_INTERVALS.length; i++) dots.append(el('i', i < m.stage ? 'on' : ''));
+    meta.append(dots);
+    if (isDue) meta.append(el('span', 'due-chip is-due', 'مستحقة الآن'));
+
     const one = el('button', 'btn btn-ghost btn-sm', 'تدرّب');
     one.type = 'button';
     one.addEventListener('click', () => {
       const v = vocabMap.get(m.word);
       if (!v) return toast('هذه الكلمة لم تعد موجودة في words.json');
-      startLesson([buildQuestion(v, 'en2ar'), buildQuestion(v, 'ar2en')], 'review');
+      startLesson([reviewQuestion(v, 'en2ar'), reviewQuestion(v, 'ar2en')], 'review');
     });
-    row.append(info, badge, one);
+
+    row.append(info, meta, one);
     list.append(row);
   });
   box.append(list);
 }
 
+/* ---------- القاموس ---------- */
+let dictFilter = 'all';
+let dictQuery = '';
+
+function renderDictionary() {
+  $$('#dict-filter .seg-btn').forEach(b => {
+    const on = b.dataset.filter === dictFilter;
+    b.classList.toggle('is-on', on);
+    b.setAttribute('aria-pressed', String(on));
+  });
+
+  const q = dictQuery.trim();
+  const ql = q.toLowerCase();
+  const inReview = new Set(state.mistakes.map(m => m.word));
+  const learned = new Set(state.learnedWords);
+
+  const rows = vocabulary
+    .filter(w => !q || w.word.toLowerCase().includes(ql) || w.meaning.includes(q))
+    .filter(w => {
+      if (dictFilter === 'learned') return learned.has(w.word);
+      if (dictFilter === 'review') return inReview.has(w.word);
+      if (dictFilter === 'new') return !learned.has(w.word) && !inReview.has(w.word);
+      return true;
+    })
+    .sort((a, b) => a.word.localeCompare(b.word));
+
+  $('#dict-sub').textContent = `${vocabulary.length} كلمة — تعلّمت ${learned.size} منها.`;
+
+  const box = $('#dict-list');
+  box.innerHTML = '';
+  if (!rows.length) {
+    box.append(el('p', 'empty-sub dict-empty', 'لا توجد نتائج مطابقة.'));
+    return;
+  }
+  for (const w of rows) {
+    const row = el('div', 'dict-row');
+    const info = el('div', 'dict-info');
+    const word = el('span', 'dict-word', w.word); word.dir = 'ltr'; word.lang = 'en';
+    const mean = el('span', 'dict-meaning', w.meaning); mean.dir = 'rtl'; mean.lang = 'ar';
+    info.append(word, mean);
+    let chip;
+    if (inReview.has(w.word)) chip = el('span', 'status-chip is-review', 'قيد المراجعة');
+    else if (learned.has(w.word)) chip = el('span', 'status-chip is-learned', 'متعلَّمة');
+    else chip = el('span', 'status-chip is-new', 'جديدة');
+    row.append(info, chip);
+    box.append(row);
+  }
+}
+
+/* ---------- التقدم + الإنجازات ---------- */
 function renderProgress() {
   const acc = accuracyPct();
   setRing($('#progress-ring'), acc || 0);
@@ -544,6 +827,7 @@ function renderProgress() {
   $('#p-wrong').textContent = state.incorrectAnswers;
   $('#p-xp').textContent = state.xp;
   $('#p-words').textContent = state.learnedWords.length;
+  $('#p-mastered').textContent = state.masteredCount || 0;
   $('#p-best').textContent = state.bestStreak;
 
   /* آخر 7 أيام من النشاط */
@@ -580,9 +864,36 @@ function renderProgress() {
       cloud.append(c);
     });
   }
+
+  renderAchievements();
+}
+
+function renderAchievements() {
+  const grid = $('#ach-grid');
+  grid.innerHTML = '';
+  let n = 0;
+  for (const a of ACHIEVEMENTS) {
+    const date = state.achievements[a.id];
+    if (date) n++;
+    const card = el('div', 'ach ' + (date ? 'is-earned' : 'is-locked'));
+    const ic = el('span', 'ach-icon');
+    ic.append(iconEl(date ? a.icon : 'lock'));
+    card.append(ic);
+    card.append(el('p', 'ach-name', a.name));
+    card.append(el('p', 'ach-desc', a.desc));
+    if (date) card.append(el('p', 'ach-date',
+      'حقّقته ' + new Date(date + 'T12:00:00').toLocaleDateString('ar', { day: 'numeric', month: 'long' })));
+    grid.append(card);
+  }
+  $('#p-ach-count').textContent = `${n} / ${ACHIEVEMENTS.length}`;
 }
 
 function renderSettings() {
+  $$('#theme-seg .seg-btn').forEach(b => {
+    const on = b.dataset.themeOpt === state.theme;
+    b.classList.toggle('is-on', on);
+    b.setAttribute('aria-pressed', String(on));
+  });
   $$('#goal-seg .seg-btn').forEach(b => {
     const on = Number(b.dataset.goal) === state.dailyGoal;
     b.classList.toggle('is-on', on);
@@ -640,7 +951,11 @@ function bindEvents() {
 
   $('#btn-start').addEventListener('click', startNormalLesson);
   $('#btn-home-review').addEventListener('click', () => navigate('review'));
-  $('#btn-exit').addEventListener('click', () => navigate('home'));
+  $('#resume-banner').addEventListener('click', resumeLesson);
+  $('#btn-exit').addEventListener('click', () => {
+    if (lesson.active) { state.savedLesson = null; saveState(); } // خروج مقصود = إلغاء الجلسة
+    navigate('home');
+  });
   $('#btn-continue').addEventListener('click', () => {
     if (!lesson.active || !lesson.answered) return;
     lesson.index++;
@@ -651,7 +966,27 @@ function bindEvents() {
   $('#btn-summary-review').addEventListener('click', () => navigate('review'));
   $('#btn-summary-home').addEventListener('click', () => navigate('home'));
 
+  /* القاموس */
+  $('#dict-search').addEventListener('input', e => { dictQuery = e.target.value; renderDictionary(); });
+  $('#dict-filter').addEventListener('click', e => {
+    const b = e.target.closest('.seg-btn');
+    if (!b) return;
+    dictFilter = b.dataset.filter;
+    renderDictionary();
+  });
+
   /* الإعدادات */
+  $('#theme-seg').addEventListener('click', e => {
+    const b = e.target.closest('.seg-btn');
+    if (!b) return;
+    state.theme = b.dataset.themeOpt;
+    saveState();
+    applyTheme();
+    renderSettings();
+    toast(state.theme === 'system' ? 'المظهر يتبع النظام'
+      : state.theme === 'light' ? 'تم تفعيل المظهر الفاتح'
+        : 'تم تفعيل المظهر الداكن');
+  });
   $('#goal-seg').addEventListener('click', e => {
     const b = e.target.closest('.seg-btn');
     if (!b) return;
@@ -662,7 +997,7 @@ function bindEvents() {
   });
   $('#reminder-toggle').addEventListener('change', e => {
     state.reminderEnabled = e.target.checked;
-    state.lastReminderFired = null; // السماح بتنبيه جديد اليوم
+    state.lastReminderFired = null;
     saveState();
     if (state.reminderEnabled) {
       if ('Notification' in window && Notification.permission === 'default') {
@@ -674,7 +1009,7 @@ function bindEvents() {
     renderSettings();
   });
 
-  /* إعادة التعيين على خطوتين — بدون نوافذ confirm */
+  /* إعادة التعيين على خطوتين */
   const resetBtn = $('#btn-reset');
   let armed = false, armTimer;
   const disarm = () => {
@@ -690,10 +1025,11 @@ function bindEvents() {
       armTimer = setTimeout(disarm, 4000);
     } else {
       clearTimeout(armTimer);
-      const keep = { reminderEnabled: state.reminderEnabled };
+      const keep = { reminderEnabled: state.reminderEnabled, theme: state.theme };
       state = { ...DEFAULTS, dailyDate: today(), ...keep };
       saveState();
       disarm();
+      updateStreakChips();
       renderSettings();
       renderHome();
       toast('تمت إعادة تعيين التقدم');
@@ -719,13 +1055,19 @@ function bindEvents() {
 async function init() {
   hydrateIcons();
   bindEvents();
+  migrate();
   rollDaily();
+  pruneDailyLog();
   refreshStreak();
+  applyTheme();
+  matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => {
+    if (state.theme === 'system') applyTheme();
+  });
   renderHome();
   renderSettings();
   syncPushTag();
   await loadVocabulary();
-  renderHome(); // تحديث شارة الأخطاء بعد معرفة حالة البيانات
+  renderHome();
   setInterval(() => { rollDaily(); checkReminder(); }, 30000);
 }
 
