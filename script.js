@@ -283,31 +283,33 @@ function renderIosSteps(list) {
 }
 
 function updateInstallUI() {
+  const installed = isInstalled();
   const card = $('#install-card');
   const banner = $('#install-banner');
-  if (!card) return;
+  const btn = $('#btn-install');
+  const steps = $('#install-steps');
+  const desc = $('#install-desc');
 
-  const installed = isInstalled();
-  card.hidden = installed;
-
-  if (!installed) {
-    const btn = $('#btn-install');
-    const steps = $('#install-steps');
-    const desc = $('#install-desc');
-    btn.hidden = true;
-    steps.hidden = true;
-    if (deferredInstall) {
-      desc.textContent = 'ثبّت Englify كتطبيق مستقل — يفتح أسرع وبملء الشاشة.';
-      btn.hidden = false;
-    } else if (isIOSSafari()) {
-      desc.textContent = 'أضف Englify إلى شاشتك الرئيسية في ثلاث خطوات:';
-      renderIosSteps(steps);
-      steps.hidden = false;
-    } else {
-      desc.textContent = 'التثبيت متاح عبر كروم (أندرويد/كمبيوتر) أو سفاري على iOS بعد الإضافة للشاشة الرئيسية.';
+  /* بطاقة الإعدادات */
+  if (card) {
+    card.hidden = installed;
+    if (!installed) {
+      btn.hidden = true;
+      steps.hidden = true;
+      if (deferredInstall) {
+        desc.textContent = 'ثبّت Englify كتطبيق مستقل — يفتح أسرع وبملء الشاشة.';
+        btn.hidden = false;
+      } else if (isIOSSafari()) {
+        desc.textContent = 'أضف Englify إلى شاشتك الرئيسية في ثلاث خطوات:';
+        renderIosSteps(steps);
+        steps.hidden = false;
+      } else {
+        desc.textContent = 'التثبيت متاح عبر كروم (أندرويد/كمبيوتر) أو سفاري على iOS بعد الإضافة للشاشة الرئيسية.';
+      }
     }
   }
 
+  /* شريط الرئيسية */
   if (banner) {
     banner.hidden = installed
       || state.installDismissed
