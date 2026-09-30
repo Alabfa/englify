@@ -807,8 +807,6 @@ function updateStreakChips() {
     pillText.textContent = `${st} ${st <= 10 ? 'أيام' : 'يوماً'}${st === 0 ? '' : ' 🔥'}`;
     pill.title = st === 0 ? 'لا سلسلة بعد — أكمل درساً لبدء السلسلة' : `سلسلة ${st} يوماً متتالية`;
   }
-  $('#sidebar-streak').textContent = st;
-  $('#sidebar-xp').textContent = state.xp;
 }
 
 function accuracyPct() {

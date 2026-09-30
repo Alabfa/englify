@@ -276,31 +276,6 @@ html[data-theme="light"] body[data-heat="cold"] {
   display: none;
 }
 
-.sidebar-foot {
-  display: flex;
-  gap: 8px;
-}
-
-.foot-chip {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  background: var(--surface);
-  border: 1px solid var(--line-soft);
-  border-radius: 12px;
-  padding: 9px 12px;
-  font-weight: 800;
-  font-size: .95rem;
-}
-
-.foot-label {
-  margin-inline-start: auto;
-  color: var(--muted);
-  font-weight: 600;
-  font-size: .72rem;
-}
-
 /* عناصر الجوال */
 .topbar {
   display: none;
@@ -1795,26 +1770,6 @@ html[data-theme="light"] body[data-heat="cold"] {
     background: var(--chrome);
     backdrop-filter: blur(8px);
     border-bottom: 1px solid var(--line-soft);
-  }
-
-  .lang-chip {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--surface);
-    border: 1px solid var(--line-soft);
-    border-radius: 999px;
-    padding: 6px 11px;
-  }
-
-  .lang-chip .flag {
-    font-size: 1.05rem;
-    line-height: 1;
-  }
-
-  .lang-chip .ic {
-    width: 15px;
-    height: 15px;
   }
 
   .bottomnav {
