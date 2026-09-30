@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -22,6 +23,7 @@
   <script src="https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js" defer></script>
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
   <a class="skip-link" href="#main">تخطَّ إلى المحتوى</a>
 
@@ -31,10 +33,9 @@
       <span class="brand-mark" aria-hidden="true">E</span>
       <span class="brand-name" lang="en">Englify</span>
     </div>
-    <div class="streak-chip" title="السلسلة الحالية">
-      <span class="ic is-amber" data-icon="flame"></span>
-      <span id="topbar-streak-num">0</span>
-      <span class="visually-hidden">سلسلة الأيام</span>
+    <div class="lang-chip" title="الواجهة العربية — تعلّم الإنجليزية">
+      <span class="flag" aria-hidden="true">🇸🇦</span>
+      <span class="ic is-amber" data-icon="star"></span>
     </div>
   </header>
 
@@ -47,17 +48,24 @@
       </div>
 
       <nav class="sidenav" aria-label="التنقل الرئيسي">
-        <button class="nav-item is-active" type="button" data-nav="home"><span class="ic" data-icon="home"></span>الرئيسية</button>
+        <button class="nav-item is-active" type="button" data-nav="home"><span class="ic"
+            data-icon="home"></span>الرئيسية</button>
         <button class="nav-item" type="button" data-nav="learn"><span class="ic" data-icon="book"></span>تعلّم</button>
-        <button class="nav-item" type="button" data-nav="review"><span class="ic" data-icon="repeat"></span>مراجعة<span class="nav-badge" id="review-badge"></span></button>
-        <button class="nav-item" type="button" data-nav="dictionary"><span class="ic" data-icon="list"></span>القاموس</button>
-        <button class="nav-item" type="button" data-nav="progress"><span class="ic" data-icon="chart"></span>التقدم</button>
-        <button class="nav-item" type="button" data-nav="settings"><span class="ic" data-icon="sliders"></span>الإعدادات</button>
+        <button class="nav-item" type="button" data-nav="review"><span class="ic" data-icon="repeat"></span>مراجعة<span
+            class="nav-badge" id="review-badge"></span></button>
+        <button class="nav-item" type="button" data-nav="dictionary"><span class="ic"
+            data-icon="list"></span>القاموس</button>
+        <button class="nav-item" type="button" data-nav="progress"><span class="ic"
+            data-icon="chart"></span>التقدم</button>
+        <button class="nav-item" type="button" data-nav="settings"><span class="ic"
+            data-icon="sliders"></span>الإعدادات</button>
       </nav>
 
       <div class="sidebar-foot">
-        <div class="foot-chip"><span class="ic is-amber" data-icon="flame"></span><span id="sidebar-streak">0</span><span class="foot-label">سلسلة</span></div>
-        <div class="foot-chip"><span class="ic is-cyan" data-icon="zap"></span><span id="sidebar-xp">0</span><span class="foot-label">نقاط</span></div>
+        <div class="foot-chip"><span class="ic is-amber" data-icon="flame"></span><span
+            id="sidebar-streak">0</span><span class="foot-label">سلسلة</span></div>
+        <div class="foot-chip"><span class="ic is-cyan" data-icon="zap"></span><span id="sidebar-xp">0</span><span
+            class="foot-label">نقاط</span></div>
       </div>
     </aside>
 
@@ -65,46 +73,74 @@
       <!-- ============ الرئيسية ============ -->
       <section class="screen is-active" id="screen-home" data-screen="home">
         <div class="panel hero">
-          <div class="hero-text">
-            <p class="eyebrow" id="home-greeting">مساء الخير</p>
-            <h1>وقت تمرين اليوم!</h1>
-            <div class="hero-actions">
-              <button class="btn btn-primary btn-lg" id="btn-start" type="button"><span class="ic" data-icon="play"></span>ابدأ التعلّم</button>
-              <button class="btn btn-ghost btn-lg" id="btn-home-review" type="button"><span class="ic" data-icon="repeat"></span>مراجعة الأخطاء<span class="count-pill" id="home-mistake-count" hidden>0</span></button>
-            </div>
+          <span class="greet-pill"><span id="home-greeting">مساء الخير</span><span class="sparkle"
+              aria-hidden="true">✦</span></span>
+          <h1 id="hero-title">وقت تمرين اليوم!</h1>
+          <p class="hero-sub" id="home-subtitle"></p>
+          <div class="hero-actions">
+            <button class="btn btn-primary btn-lg" id="btn-start" type="button"><span class="ic"
+                data-icon="play"></span><span id="btn-start-label">ابدأ التعلم</span></button>
+            <button class="btn btn-hero-ghost btn-lg" id="btn-home-review" type="button"><span class="ic"
+                data-icon="repeat"></span>مراجعة الأخطاء<span class="count-pill" id="home-mistake-count"
+                hidden>0</span></button>
           </div>
-          <div class="hero-streak">
-            <svg class="big-flame" viewBox="0 0 24 24" aria-hidden="true">
-              <path class="flame-outer" stroke="none" d="M12 2.4c.7 3-.8 4.8-2.1 6.4C8.5 10.5 7 12.4 7 14.7 7 18.2 9.2 20.7 12 20.7s5-2.5 5-6c0-1.6-.6-3-1.4-4.2-.5 1.2-1.4 2.1-2.6 2.5 1-2.6.4-5.4-1-7.5-.6-.9-1.2-1.9-1-3.1z"/>
-              <path class="flame-core" stroke="none" d="M12 20.7c-1.8 0-3.1-1.5-3.1-3.4 0-1.4.8-2.5 1.7-3.6.6-.8 1.1-1.6 1.4-2.7 1 1.6 3.1 3 3.1 6.3 0 1.9-1.3 3.4-3.1 3.4z"/>
-            </svg>
-            <div class="hero-streak-num" id="home-streak">0</div>
-            <div class="hero-streak-label">سلسلة الأيام</div>
+          <div class="hero-divider" aria-hidden="true"></div>
+          <div class="streak-row">
+            <span class="streak-badge"><span class="ic" data-icon="flame"></span></span>
+            <span class="streak-text">
+              <strong>سلسلة الأيام المستمرة</strong>
+              <span class="streak-note" id="streak-note"></span>
+            </span>
+            <span class="streak-pill" id="home-streak-pill">
+              <span id="home-streak">0</span>
+              <span class="ic" data-icon="check"></span>
+            </span>
           </div>
         </div>
 
-        <button class="panel resume-banner" id="resume-banner" type="button" hidden>
-          <span class="set-icon"><span class="ic" data-icon="play"></span></span>
+        <button class="resume-banner" id="resume-banner" type="button" hidden>
+          <span class="ic is-amber" data-icon="play"></span>
           <span class="resume-text">
             <strong>لديك درس غير مكتمل</strong>
-            <span class="resume-info" id="resume-info"></span>
+            <span id="resume-info"></span>
           </span>
-          <span class="resume-go">متابعة</span>
+          <span class="ac-go">متابعة</span>
         </button>
 
-        <div class="panel goal-panel">
-          <div class="goal-head">
-            <div class="goal-title"><span class="ic is-amber" data-icon="target"></span><h2>الهدف اليومي</h2></div>
-            <span class="goal-count" id="goal-count">0 / 10 سؤال</span>
+        <div class="panel goal2">
+          <div class="goal2-head">
+            <div class="goal2-title">
+              <span class="goal2-icon"><span class="ic" data-icon="target"></span></span>
+              <h2>الهدف اليومي</h2>
+            </div>
+            <span class="goal2-count"><b id="goal-done">0</b> / <span id="goal-total">10</span> أسئلة</span>
           </div>
-          <div class="goal-bar"><div class="goal-fill" id="goal-fill"></div></div>
-          <p class="goal-status" id="goal-status"></p>
+          <div class="goal-bar">
+            <div class="goal-fill" id="goal-fill"></div>
+          </div>
+          <div class="goal2-foot">
+            <span>البداية</span>
+            <span class="goal2-status" id="goal-status"></span>
+            <span id="goal-end-label">10 أسئلة</span>
+          </div>
         </div>
 
-        <div class="panel stat-strip">
-          <div class="stat"><span class="stat-num is-amber" id="stat-xp">0</span><span class="stat-label">إجمالي النقاط</span></div>
-          <div class="stat"><span class="stat-num" id="stat-words">0</span><span class="stat-label">كلمات متعلَّمة</span></div>
-          <div class="stat"><span class="stat-num" id="stat-accuracy">—</span><span class="stat-label">الدقة</span></div>
+        <div class="panel stats2">
+          <div class="stat2">
+            <span class="stat2-num" id="stat-level">1</span>
+            <span class="stat2-label">المستوى</span>
+            <span class="stat2-pill is-cyan" id="pill-level"></span>
+          </div>
+          <div class="stat2">
+            <span class="stat2-num" id="stat-words">0</span>
+            <span class="stat2-label">كلمات متعلَّمة</span>
+            <span class="stat2-pill is-jade" id="pill-words"></span>
+          </div>
+          <div class="stat2">
+            <span class="stat2-num" id="stat-accuracy">—</span>
+            <span class="stat2-label">نسبة الدقة</span>
+            <span class="stat2-pill is-amber" id="pill-accuracy"></span>
+          </div>
         </div>
 
         <p class="data-note" id="data-note" hidden></p>
@@ -115,8 +151,10 @@
         <div class="lesson">
           <div id="quiz-view">
             <div class="lesson-top">
-              <button class="icon-btn" id="btn-exit" type="button" aria-label="إنهاء الدرس"><span class="ic" data-icon="x"></span></button>
-              <div class="lesson-progress" id="lesson-progressbar" role="progressbar" aria-label="تقدم الدرس" aria-valuemin="0" aria-valuemax="10" aria-valuenow="0">
+              <button class="icon-btn" id="btn-exit" type="button" aria-label="إنهاء الدرس"><span class="ic"
+                  data-icon="x"></span></button>
+              <div class="lesson-progress" id="lesson-progressbar" role="progressbar" aria-label="تقدم الدرس"
+                aria-valuemin="0" aria-valuemax="10" aria-valuenow="0">
                 <div class="lesson-progress-fill" id="lesson-progress-fill"></div>
               </div>
               <span class="lesson-count" id="lesson-count">1 / 10</span>
@@ -136,22 +174,28 @@
             <div class="panel summary">
               <div class="ring-wrap">
                 <svg id="summary-ring" viewBox="0 0 120 120" aria-hidden="true">
-                  <circle class="ring-bg" cx="60" cy="60" r="52"/>
-                  <circle class="ring-fg" cx="60" cy="60" r="52"/>
+                  <circle class="ring-bg" cx="60" cy="60" r="52" />
+                  <circle class="ring-fg" cx="60" cy="60" r="52" />
                 </svg>
                 <div class="ring-center"><span id="summary-pct">0%</span><span class="ring-sub">الدقة</span></div>
               </div>
               <h2 class="summary-title">اكتمل الدرس!</h2>
               <p class="summary-message" id="summary-message"></p>
               <div class="summary-chips">
-                <div class="chip-stat"><span class="chip-num" id="summary-score">0 / 10</span><span class="chip-label">إجابات صحيحة</span></div>
-                <div class="chip-stat"><span class="chip-num is-amber" id="summary-xp">+0</span><span class="chip-label">نقاط</span></div>
-                <div class="chip-stat"><span class="chip-num"><span class="ic" data-icon="flame"></span><span id="summary-streak">0</span></span><span class="chip-label">سلسلة</span></div>
+                <div class="chip-stat"><span class="chip-num" id="summary-score">0 / 10</span><span
+                    class="chip-label">إجابات صحيحة</span></div>
+                <div class="chip-stat"><span class="chip-num is-amber" id="summary-xp">+0</span><span
+                    class="chip-label">نقاط</span></div>
+                <div class="chip-stat"><span class="chip-num"><span class="ic" data-icon="flame"></span><span
+                      id="summary-streak">0</span></span><span class="chip-label">سلسلة</span></div>
               </div>
               <div class="summary-actions">
-                <button class="btn btn-primary btn-lg" id="btn-summary-continue" type="button"><span class="ic" data-icon="book"></span>متابعة التعلّم</button>
-                <button class="btn btn-ghost" id="btn-summary-review" type="button"><span class="ic" data-icon="repeat"></span>مراجعة الأخطاء</button>
-                <button class="btn btn-ghost" id="btn-summary-home" type="button"><span class="ic" data-icon="home"></span>الرئيسية</button>
+                <button class="btn btn-primary btn-lg" id="btn-summary-continue" type="button"><span class="ic"
+                    data-icon="book"></span>متابعة التعلّم</button>
+                <button class="btn btn-ghost" id="btn-summary-review" type="button"><span class="ic"
+                    data-icon="repeat"></span>مراجعة الأخطاء</button>
+                <button class="btn btn-ghost" id="btn-summary-home" type="button"><span class="ic"
+                    data-icon="home"></span>الرئيسية</button>
               </div>
             </div>
           </div>
@@ -203,19 +247,44 @@
         <div class="panel progress-top">
           <div class="ring-wrap">
             <svg id="progress-ring" viewBox="0 0 120 120" aria-hidden="true">
-              <circle class="ring-bg" cx="60" cy="60" r="52"/>
-              <circle class="ring-fg" cx="60" cy="60" r="52"/>
+              <circle class="ring-bg" cx="60" cy="60" r="52" />
+              <circle class="ring-fg" cx="60" cy="60" r="52" />
             </svg>
             <div class="ring-center"><span id="progress-pct">—</span><span class="ring-sub">الدقة</span></div>
           </div>
           <dl class="stat-list">
-            <div class="stat-line"><dt>إجمالي الإجابات</dt><dd id="p-total">0</dd></div>
-            <div class="stat-line"><dt>إجابات صحيحة</dt><dd id="p-correct" class="is-jade">0</dd></div>
-            <div class="stat-line"><dt>إجابات خاطئة</dt><dd id="p-wrong" class="is-coral">0</dd></div>
-            <div class="stat-line"><dt>إجمالي النقاط</dt><dd id="p-xp" class="is-amber">0</dd></div>
-            <div class="stat-line"><dt>كلمات متعلَّمة</dt><dd id="p-words">0</dd></div>
-            <div class="stat-line"><dt>كلمات أتقنتها</dt><dd id="p-mastered" class="is-jade">0</dd></div>
-            <div class="stat-line"><dt>أفضل سلسلة</dt><dd id="p-best">0</dd></div>
+            <div class="stat-line">
+              <dt>إجمالي الإجابات</dt>
+              <dd id="p-total">0</dd>
+            </div>
+            <div class="stat-line">
+              <dt>إجابات صحيحة</dt>
+              <dd id="p-correct" class="is-jade">0</dd>
+            </div>
+            <div class="stat-line">
+              <dt>إجابات خاطئة</dt>
+              <dd id="p-wrong" class="is-coral">0</dd>
+            </div>
+            <div class="stat-line">
+              <dt>إجمالي النقاط</dt>
+              <dd id="p-xp" class="is-amber">0</dd>
+            </div>
+            <div class="stat-line">
+              <dt>المستوى</dt>
+              <dd id="p-level">1</dd>
+            </div>
+            <div class="stat-line">
+              <dt>كلمات متعلَّمة</dt>
+              <dd id="p-words">0</dd>
+            </div>
+            <div class="stat-line">
+              <dt>كلمات أتقنتها</dt>
+              <dd id="p-mastered" class="is-jade">0</dd>
+            </div>
+            <div class="stat-line">
+              <dt>أفضل سلسلة</dt>
+              <dd id="p-best">0</dd>
+            </div>
           </dl>
         </div>
 
@@ -254,9 +323,12 @@
               </div>
             </div>
             <div class="seg seg-full" id="theme-seg" role="group" aria-label="اختيار المظهر">
-              <button class="seg-btn" type="button" data-theme-opt="system" aria-pressed="true"><span class="ic" data-icon="system"></span>النظام</button>
-              <button class="seg-btn" type="button" data-theme-opt="light" aria-pressed="false"><span class="ic" data-icon="sun"></span>فاتح</button>
-              <button class="seg-btn" type="button" data-theme-opt="dark" aria-pressed="false"><span class="ic" data-icon="moon"></span>داكن</button>
+              <button class="seg-btn" type="button" data-theme-opt="system" aria-pressed="true"><span class="ic"
+                  data-icon="system"></span>النظام</button>
+              <button class="seg-btn" type="button" data-theme-opt="light" aria-pressed="false"><span class="ic"
+                  data-icon="sun"></span>فاتح</button>
+              <button class="seg-btn" type="button" data-theme-opt="dark" aria-pressed="false"><span class="ic"
+                  data-icon="moon"></span>داكن</button>
             </div>
           </div>
         </div>
@@ -317,12 +389,14 @@
 
   <!-- Mobile bottom navigation -->
   <nav class="bottomnav" aria-label="التنقل الرئيسي">
-    <button type="button" data-nav="home" class="is-active"><span class="ic" data-icon="home"></span><span>الرئيسية</span></button>
+    <button type="button" data-nav="home" class="is-active"><span class="ic"
+        data-icon="home"></span><span>الرئيسية</span></button>
     <button type="button" data-nav="learn"><span class="ic" data-icon="book"></span><span>تعلّم</span></button>
     <button type="button" data-nav="review"><span class="ic" data-icon="repeat"></span><span>مراجعة</span></button>
     <button type="button" data-nav="dictionary"><span class="ic" data-icon="list"></span><span>القاموس</span></button>
     <button type="button" data-nav="progress"><span class="ic" data-icon="chart"></span><span>التقدم</span></button>
-    <button type="button" data-nav="settings"><span class="ic" data-icon="sliders"></span><span>الإعدادات</span></button>
+    <button type="button" data-nav="settings"><span class="ic"
+        data-icon="sliders"></span><span>الإعدادات</span></button>
   </nav>
 
   <div class="toast" id="toast" role="status"></div>
@@ -330,4 +404,5 @@
 
   <script src="script.js"></script>
 </body>
+
 </html>

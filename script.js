@@ -14,9 +14,10 @@ const XP_PER_CORRECT = 10;
 const REMINDER_TIME = '18:00';   // 6:00 مساءً — ثابت
 const REVIEW_PER_LESSON = 3;     // الحد الأقصى لكلمات المراجعة في الدرس العادي
 const SRS_INTERVALS = [1, 7, 30]; // يتخرّج بعد 3 إجابات صحيحة بدلاً من 5
+const RING_CIRC = 490.1; // محيط حلقة الهدف r=78
 
 /* ضع هنا App ID من لوحة OneSignal */
-const ONESIGNAL_APP_ID = 'YOUR_APP_ID';
+const ONESIGNAL_APP_ID = 'e39e7961-871c-4d5f-bb8f-15bcfefc952b';
 
 /* ---------- أدوات صغيرة ---------- */
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -38,12 +39,15 @@ function shuffle(list) {
   return a;
 }
 
+
 /* صيغ العدد العربية: واحد / اثنان / جمع قلة (3-10) / جمع كثرة (11+) */
+const arNum = n => Number(n).toLocaleString('en-US'); // أرقام إنجليزية مع فواصل الآلاف: 1,250
+
 function countAr(n, forms) {
   if (n === 1) return forms[0];
   if (n === 2) return forms[1];
-  if (n >= 3 && n <= 10) return `${n} ${forms[2]}`;
-  return `${n} ${forms[3]}`;
+  if (n >= 3 && n <= 10) return `${arNum(n)} ${forms[2]}`;
+  return `${arNum(n)} ${forms[3]}`;
 }
 
 /* ---------- التواريخ ---------- */
@@ -176,7 +180,7 @@ const ICONS = {
   repeat: '<path d="m17 2.5 4 4-4 4"/><path d="M21 6.5H8a5 5 0 0 0-5 5v1"/><path d="m7 21.5-4-4 4-4"/><path d="M3 17.5h13a5 5 0 0 0 5-5v-1"/>',
   chart: '<path d="M4 20h16"/><path d="M7 20v-6"/><path d="M12 20V6"/><path d="M17 20v-9"/>',
   sliders: '<path d="M4 7h8"/><circle cx="15.5" cy="7" r="2.2"/><path d="M4 17h3"/><circle cx="10.5" cy="17" r="2.2"/><path d="M14 17h6"/>',
-  flame: '<path class="flame-outer" stroke="none" d="M12 2.4c.7 3-.8 4.8-2.1 6.4C8.5 10.5 7 12.4 7 14.7 7 18.2 9.2 20.7 12 20.7s5-2.5 5-6c0-1.6-.6-3-1.4-4.2-.5 1.2-1.4 2.1-2.6 2.5 1-2.6.4-5.4-1-7.5-.6-.9-1.2-1.9-1-3.1z"/><path class="flame-core" stroke="none" d="M12 20.7c-1.8 0-3.1-1.5-3.1-3.4 0-1.4.8-2.5 1.7-3.6.6-.8 1.1-1.6 1.4-2.7 1 1.6 3.1 3 3.1 6.3 0 1.9-1.3 3.4-3.1 3.4z"/>',
+  flame: '<path d="M12 3l2.7 5.7 6.3.9-4.6 4.4 1.1 6.3L12 17.4 6.5 20.3l1.1-6.3L3 9.6l6.3-.9z"/>',
   x: '<path d="M6 6l12 12"/><path d="M18 6 6 18"/>',
   check: '<path d="M4.5 12.8 9.6 18 19.5 6.8"/>',
   play: '<path fill="currentColor" stroke="none" d="M8 5v14l11-7z"/>',
@@ -558,17 +562,22 @@ function answerQuestion(btn, chosen) {
   state.dailyLog[today()] = (state.dailyLog[today()] || 0) + 1;
 
   let masteredNow = false;
+  let leveledUp = 0;
   if (correct) {
+    const prevLevel = levelInfo().level;
     lesson.correct++;
     state.correctAnswers++;
     state.xp += XP_PER_CORRECT;
     if (!state.learnedWords.includes(q.word)) state.learnedWords.push(q.word);
-    masteredNow = promoteMistake(q.word); // إجابة صحيحة تقدّم جدول المراجعة (في أي نوع درس)
+    masteredNow = promoteMistake(q.word);
     spawnXpFloat();
+    const nowLevel = levelInfo().level;
+    if (nowLevel > prevLevel) leveledUp = nowLevel;
     if (state.dailyProgress === state.dailyGoal && !state.goalReachedOnce) {
       state.goalReachedOnce = true;
-      confetti(); // لحظة احتفال: تحقيق هدف اليوم
+      confetti();
     }
+    if (leveledUp) celebrateLevel(leveledUp);
   } else {
     state.incorrectAnswers++;
     addMistake(q.word, q.meaning);
@@ -659,16 +668,42 @@ function setRing(svg, pct) {
 
 /* ---------- عرض الشاشات ---------- */
 function updateStreakChips() {
-  const s = state.streak;
-  document.body.dataset.heat = s === 0 ? 'cold' : s < 7 ? 'lit' : s < 30 ? 'blaze' : 'inferno';
-  $('#topbar-streak-num').textContent = s;
-  $('#sidebar-streak').textContent = s;
+  const st = state.streak;
+  document.body.dataset.heat = st === 0 ? 'cold' : st < 7 ? 'lit' : st < 30 ? 'blaze' : 'inferno';
+  const pill = $('#home-streak-pill');
+  const pillText = $('#home-streak');
+  if (pill && pillText) {
+    pill.hidden = st === 0;
+    pillText.textContent = st === 1 ? 'يوم واحد' : st === 2 ? 'يومان'
+      : `${arNum(st)} ${st <= 10 ? 'أيام' : 'يوماً'}`;
+  }
+  $('#sidebar-streak').textContent = st;
   $('#sidebar-xp').textContent = state.xp;
-  $('#home-streak').textContent = s;
 }
 
 function accuracyPct() {
   return state.totalQuestions ? Math.round(state.correctAnswers / state.totalQuestions * 100) : null;
+}
+
+/* ---------- نظام المستويات ----------
+   المستوى مشتق من النقاط مباشرة — بلا حقول جديدة ولا ترحيل بيانات.
+   كل مستوى يتطلب 50 نقطة أكثر من سابقه: 100، 150، 200... */
+function levelInfo() {
+  let level = 1, into = state.xp, need = 100;
+  while (into >= need) { into -= need; level++; need += 50; }
+  return { level, into, need };
+}
+
+function celebrateLevel(lv) {
+  confetti();
+  toast(`وصلت إلى المستوى ${arNum(lv)}!`);
+}
+
+function setPill(elm, cls, text, withStar) {
+  elm.className = 'stat2-pill ' + cls;
+  elm.innerHTML = '';
+  elm.append(el('span', null, text));
+  if (withStar) elm.append(iconEl('star'));
 }
 
 function renderHome() {
@@ -676,28 +711,54 @@ function renderHome() {
   const h = new Date().getHours();
   $('#home-greeting').textContent = h < 12 ? 'صباح الخير' : 'مساء الخير';
 
-  $('#goal-count').textContent = `${state.dailyProgress} / ${state.dailyGoal} سؤال`;
+  const done = state.dailyProgress >= state.dailyGoal;
+  const s = state.savedLesson;
+  const due = dueMistakes().length;
+
+  /* نصوص تكيّفية حسب حالة المستخدم */
+  $('#hero-title').textContent = done ? 'أنجزت تمرين اليوم!' : 'وقت تمرين اليوم!';
+  $('#btn-start-label').textContent = done ? 'درس إضافي' : 'ابدأ التعلم';
+  $('#home-subtitle').textContent =
+    s ? 'لديك درس لم يكتمل — تابع من حيث توقفت دون فقدان تقدمك.' :
+      state.lessonsDone === 0 ? 'رحلتك تبدأ من هنا — درس واحد يومياً يصنع الفرق.' :
+        done ? 'حققت هدف اليوم! عُد غداً لتبقي شعلتك مشتعلة.' :
+          due >= 3 ? `لديك ${countAr(due, ['كلمة مستحقة للمراجعة', 'كلمتان مستحقتان للمراجعة', 'كلمات مستحقة للمراجعة', 'كلمة مستحقة للمراجعة'])} — لا تدعها تتراكم.` :
+            'مسيرتك تتقدم بشكل رائع! أكمل درس اليوم للحفاظ على الشعلة.';
+
+  /* بطاقة الهدف */
+  $('#goal-done').textContent = arNum(state.dailyProgress);
+  $('#goal-total').textContent = arNum(state.dailyGoal);
+  $('#goal-end-label').textContent = `${arNum(state.dailyGoal)} أسئلة`;
   const fill = $('#goal-fill');
   fill.style.width = Math.min(100, state.dailyProgress / state.dailyGoal * 100) + '%';
-  fill.classList.toggle('is-done', state.dailyProgress >= state.dailyGoal);
-  const remaining = Math.max(0, state.dailyGoal - state.dailyProgress);
-  $('#goal-status').textContent = remaining === 0
-    ? 'أحسنت! حققت هدف اليوم.'
-    : `تبقّى ${countAr(remaining, ['سؤال واحد', 'سؤالان', 'أسئلة', 'سؤالاً'])}`;
+  fill.classList.toggle('is-done', done);
+  const status = $('#goal-status');
+  status.classList.toggle('is-done', done);
+  status.textContent = done
+    ? 'أنجزت هدف اليوم — أحسنت!'
+    : `باقي ${countAr(Math.max(0, state.dailyGoal - state.dailyProgress), ['سؤال واحد', 'سؤالين', 'أسئلة', 'أسئلة'])} لإنهاء الهدف اليومي`;
 
+  /* بطاقة الإحصاءات */
   const acc = accuracyPct();
-  $('#stat-xp').textContent = state.xp;
-  $('#stat-words').textContent = state.learnedWords.length;
-  $('#stat-accuracy').textContent = acc === null ? '—' : acc + '%';
+  const lv = levelInfo();
+  $('#stat-level').textContent = arNum(lv.level);
+  $('#stat-words').textContent = arNum(state.learnedWords.length);
+  $('#stat-accuracy').textContent = acc === null ? '—' : `${arNum(acc)}%`;
+  setPill($('#pill-level'), 'is-cyan', `${arNum(lv.into)} / ${arNum(lv.need)} نقطة`);
+  if (vocabulary.length) setPill($('#pill-words'), 'is-jade', `من أصل ${arNum(vocabulary.length)}`);
+  else setPill($('#pill-words'), 'is-muted', '—');
+  if (acc === null) setPill($('#pill-accuracy'), 'is-muted', 'ابدأ الآن');
+  else if (acc >= 90) setPill($('#pill-accuracy'), 'is-amber', 'ممتاز', true);
+  else if (acc >= 75) setPill($('#pill-accuracy'), 'is-amber', 'جيد جداً');
+  else if (acc >= 50) setPill($('#pill-accuracy'), 'is-muted', 'جيد');
+  else setPill($('#pill-accuracy'), 'is-muted', 'واصل التدرب');
 
   const mc = state.mistakes.length;
-  const pill = $('#home-mistake-count');
-  pill.hidden = mc === 0;
-  pill.textContent = mc;
+  const mcPill = $('#home-mistake-count');
+  mcPill.hidden = mc === 0;
+  mcPill.textContent = mc;
   $('#review-badge').textContent = mc || '';
 
-  /* شريط استكمال الدرس المتقطع */
-  const s = state.savedLesson;
   $('#resume-banner').hidden = !s;
   if (s) {
     $('#resume-info').textContent =
@@ -826,6 +887,7 @@ function renderProgress() {
   $('#p-correct').textContent = state.correctAnswers;
   $('#p-wrong').textContent = state.incorrectAnswers;
   $('#p-xp').textContent = state.xp;
+  $('#p-level').textContent = arNum(levelInfo().level);
   $('#p-words').textContent = state.learnedWords.length;
   $('#p-mastered').textContent = state.masteredCount || 0;
   $('#p-best').textContent = state.bestStreak;
@@ -882,7 +944,7 @@ function renderAchievements() {
     card.append(el('p', 'ach-name', a.name));
     card.append(el('p', 'ach-desc', a.desc));
     if (date) card.append(el('p', 'ach-date',
-      'حقّقته ' + new Date(date + 'T12:00:00').toLocaleDateString('ar', { day: 'numeric', month: 'long' })));
+      'حقّقته ' + new Date(date + 'T12:00:00').toLocaleDateString('ar-u-nu-latn', { day: 'numeric', month: 'long' })));
     grid.append(card);
   }
   $('#p-ach-count').textContent = `${n} / ${ACHIEVEMENTS.length}`;
