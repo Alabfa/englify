@@ -429,6 +429,28 @@
   <div class="toast" id="toast" role="status"></div>
   <canvas id="confetti-canvas" aria-hidden="true"></canvas>
 
+  <script>
+    if (new URLSearchParams(location.search).has('debug')) {
+      window.addEventListener('DOMContentLoaded', () => {
+        const ua = navigator.userAgent;
+        let saved = {};
+        try { saved = JSON.parse(localStorage.getItem('kalima-state-v1') || '{}'); } catch { }
+        const box = document.createElement('pre');
+        box.style.cssText = 'position:fixed;bottom:0;inset-inline:0;z-index:9999;background:#000;color:#0f0;font:11px monospace;padding:8px;max-height:40vh;overflow:auto;direction:ltr;text-align:left;white-space:pre-wrap;margin:0';
+        box.textContent = [
+          'ua=' + ua.slice(0, 80),
+          'ios=' + (/iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)),
+          'safari=' + (/safari/i.test(ua) && !/crios|fxios|edgi|opt|duckduck/i.test(ua)),
+          'standalone=' + (matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true),
+          'updateInstallUI=' + (typeof updateInstallUI),
+          'card=' + !!document.getElementById('install-card'),
+          'banner=' + !!document.getElementById('install-banner'),
+          'dismissed=' + saved.installDismissed,
+        ].join('\n');
+        document.body.append(box);
+      });
+    }
+  </script>
   <script src="script.js?v=2"></script>
 </body>
 
