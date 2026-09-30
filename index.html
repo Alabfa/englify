@@ -78,12 +78,24 @@
           <h1 id="hero-title">وقت تمرين اليوم!</h1>
           <p class="hero-sub" id="home-subtitle"></p>
           <div class="hero-actions">
-            <button class="btn btn-primary btn-lg" id="btn-start" type="button"><span class="ic"
-                data-icon="play"></span><span id="btn-start-label">ابدأ التعلم</span></button>
-            <button class="btn btn-hero-ghost btn-lg" id="btn-home-review" type="button"><span class="ic"
-                data-icon="repeat"></span>مراجعة الأخطاء<span class="count-pill" id="home-mistake-count"
-                hidden>0</span></button>
+            <button class="btn btn-primary btn-lg hero-cta" id="btn-start" type="button" disabled>
+              <span class="cta-main">
+                <span class="ic" data-icon="play"></span>
+                <span id="btn-start-label">ابدأ التعلم</span>
+              </span>
+              <span class="cta-progress" id="cta-progress" hidden>
+                <span class="cta-bar"><span class="cta-fill" id="cta-fill"></span></span>
+                <span class="cta-nums" id="cta-nums"></span>
+              </span>
+            </button>
+            <button class="btn btn-hero-ghost btn-lg" id="btn-home-review" type="button" disabled>
+              <span class="ic" data-icon="repeat"></span>
+              <span>مراجعة الأخطاء</span>
+              <span class="due-chip is-due" id="home-due-chip" hidden></span>
+            </button>
           </div>
+          <button class="link-btn" id="btn-fresh-start" type="button" hidden>تجاهل المتابعة وابدأ درساً جديداً</button>
+          <p class="action-hint" id="action-hint"></p>
           <div class="hero-divider" aria-hidden="true"></div>
           <div class="streak-row">
             <span class="streak-badge"><span class="ic" data-icon="flame"></span></span>
@@ -97,15 +109,6 @@
             </span>
           </div>
         </div>
-
-        <button class="resume-banner" id="resume-banner" type="button" hidden>
-          <span class="ic is-amber" data-icon="play"></span>
-          <span class="resume-text">
-            <strong>لديك درس غير مكتمل</strong>
-            <span id="resume-info"></span>
-          </span>
-          <span class="ac-go">متابعة</span>
-        </button>
 
         <div class="panel goal2">
           <div class="goal2-head">
@@ -143,6 +146,15 @@
           </div>
         </div>
 
+        <div class="install-banner" id="install-banner" hidden>
+          <span class="ib-icon" aria-hidden="true">E</span>
+          <span class="ib-text">
+            <strong>ثبّت Englify على جهازك</strong>
+            <span>وصول أسرع وتجربة بلا شريط متصفح</span>
+          </span>
+          <button class="ib-close" id="install-close" type="button" aria-label="إخفاء إشعار التثبيت">✕</button>
+        </div>
+
         <p class="data-note" id="data-note" hidden></p>
       </section>
 
@@ -154,7 +166,7 @@
               <button class="icon-btn" id="btn-exit" type="button" aria-label="إنهاء الدرس"><span class="ic"
                   data-icon="x"></span></button>
               <div class="lesson-progress" id="lesson-progressbar" role="progressbar" aria-label="تقدم الدرس"
-                aria-valuemin="0" aria-valuemax="10" aria-valuenow="0">
+                aria-valuemin="0" aria-valuenow="0">
                 <div class="lesson-progress-fill" id="lesson-progress-fill"></div>
               </div>
               <span class="lesson-count" id="lesson-count">1 / 10</span>
@@ -340,7 +352,7 @@
               <span class="set-icon"><span class="ic" data-icon="target"></span></span>
               <div class="set-info">
                 <h2>الهدف اليومي</h2>
-                <p>كم سؤالاً تريد الإجابة عنه كل يوم.</p>
+                <p>كم سؤالاً في اليوم — وطول كل درس يتبعه.</p>
               </div>
             </div>
             <div class="seg seg-full" id="goal-seg" role="group" aria-label="حجم الهدف اليومي">
@@ -367,6 +379,21 @@
           </div>
           <div class="set-status-row">
             <p class="setting-status" id="reminder-status"></p>
+          </div>
+        </div>
+
+        <p class="set-label">التثبيت</p>
+        <div class="panel set-group" id="install-card" hidden>
+          <div class="set-row set-col">
+            <div class="set-row-head">
+              <span class="set-icon"><span class="ic" data-icon="download"></span></span>
+              <div class="set-info">
+                <h2>تثبيت التطبيق</h2>
+                <p id="install-desc"></p>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-block" id="btn-install" type="button" hidden>تثبيت الآن</button>
+            <ol class="install-steps" id="install-steps" hidden></ol>
           </div>
         </div>
 

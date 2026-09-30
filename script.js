@@ -4,20 +4,22 @@
    Englify — منطق التطبيق
    المفردات من words.json، والحالة في localStorage.
    يشمل: تكرار متباعد (SRS)، خلط جديد/مراجعة، استكمال الدرس
-   المتقطع، إنجازات، قاموس، احتفالات — بلا أُطر أو خادم.
+   المتقطع، مستويات، إنجازات، قاموس، احتفالات، مظهر فاتح/داكن —
+   بلا أُطر عمل أو خادم. طول الدرس يتبع الهدف اليومي.
    ============================================================ */
 
 /* ---------- الإعدادات ---------- */
 const STORAGE_KEY = 'kalima-state-v1'; // يطابق السكربت المضمّن في <head>
-const LESSON_LENGTH = 10;
 const XP_PER_CORRECT = 10;
-const REMINDER_TIME = '18:00';   // 6:00 مساءً — ثابت
-const REVIEW_PER_LESSON = 3;     // الحد الأقصى لكلمات المراجعة في الدرس العادي
-const SRS_INTERVALS = [1, 7, 30]; // يتخرّج بعد 3 إجابات صحيحة بدلاً من 5
-const RING_CIRC = 490.1; // محيط حلقة الهدف r=78
+const REMINDER_TIME = '18:00';           // 6:00 مساءً — ثابت لجميع المستخدمين
+const SRS_INTERVALS = [1, 3, 7, 14, 30]; // جدول التكرار المتباعد بالأيام
 
-/* ضع هنا App ID من لوحة OneSignal */
-const ONESIGNAL_APP_ID = 'e39e7961-871c-4d5f-bb8f-15bcfefc952b';
+/* ضع هنا App ID من لوحة OneSignal (اتركه كما هو إذا لم تضبط Push بعد) */
+const ONESIGNAL_APP_ID = 'YOUR_APP_ID';
+
+/* طول الدرس يتبع الهدف اليومي — درس واحد = هدف اليوم.
+   سقف كلمات المراجعة داخل الدرس العادي ≈ 30% من الهدف */
+const reviewCap = () => Math.max(3, Math.round(state.dailyGoal * 0.3));
 
 /* ---------- أدوات صغيرة ---------- */
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -30,6 +32,13 @@ function el(tag, className, text) {
   return node;
 }
 
+/* ربط آمن — العنصر المفقود يُطبع في الكونسول بدل إسقاط بقية الربط */
+function bind(sel, ev, fn) {
+  const n = $(sel);
+  if (n) n.addEventListener(ev, fn);
+  else console.warn('Englify: عنصر مفقود في HTML —', sel);
+}
+
 function shuffle(list) {
   const a = [...list];
   for (let i = a.length - 1; i > 0; i--) {
@@ -39,10 +48,10 @@ function shuffle(list) {
   return a;
 }
 
+/* أرقام إنجليزية مع فواصل الآلاف: 1,250 */
+const arNum = n => Number(n).toLocaleString('en-US');
 
 /* صيغ العدد العربية: واحد / اثنان / جمع قلة (3-10) / جمع كثرة (11+) */
-const arNum = n => Number(n).toLocaleString('en-US'); // أرقام إنجليزية مع فواصل الآلاف: 1,250
-
 function countAr(n, forms) {
   if (n === 1) return forms[0];
   if (n === 2) return forms[1];
@@ -56,10 +65,6 @@ const dayStamp = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDa
 const today = () => dayStamp(new Date());
 const daysAgo = n => { const d = new Date(); d.setDate(d.getDate() - n); return dayStamp(d); };
 const daysFromNow = n => { const d = new Date(); d.setDate(d.getDate() + n); return dayStamp(d); };
-function daysUntil(dateStr) {
-  const ms = new Date(dateStr + 'T12:00:00') - new Date(today() + 'T12:00:00');
-  return Math.max(0, Math.round(ms / 86400000));
-}
 
 /* ---------- الحالة المحفوظة ---------- */
 const DEFAULTS = {
@@ -73,6 +78,7 @@ const DEFAULTS = {
   lessonsDone: 0, perfectLesson: false, masteredCount: 0,
   goalReachedOnce: false,
   achievements: {}, savedLesson: null,
+  installDismissed: false,
 };
 
 let state = loadState();
@@ -157,6 +163,8 @@ async function loadVocabulary() {
     vocabulary = data.filter(w => w && typeof w.word === 'string' && typeof w.meaning === 'string');
     if (vocabulary.length < 4) throw new Error('نحتاج 4 كلمات على الأقل لبناء الاختبار');
     vocabMap = new Map(vocabulary.map(w => [w.word, w]));
+    $('#btn-start').disabled = false;
+    $('#btn-home-review').disabled = false;
   } catch (err) {
     showDataError(err);
   }
@@ -171,16 +179,17 @@ function showDataError(err) {
     el('span', null, `(${err.message}) إن كنت فتحت index.html مباشرة من القرص، فشغّل التطبيق عبر خادم محلي — مثل Live Server في VS Code، أو الأمر npx serve، أو python -m http.server — حتى يسمح المتصفح بجلب الملف.`)
   );
   $('#btn-start').disabled = true;
+  $('#btn-home-review').disabled = true;
 }
 
-/* ---------- الأيقونات (SVG مضمّن) ---------- */
+/* ---------- الأيقونات (SVG مضمّن، تُحقن مرة واحدة) ---------- */
 const ICONS = {
   home: '<path d="M3 11.3 12 3l9 8.3"/><path d="M5.5 10v10.5h13V10"/><path d="M10 20.5v-6h4v6"/>',
   book: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15.5H6.5A2.5 2.5 0 0 0 4 21V5.5z"/><path d="M20 18.5H6.5A2.5 2.5 0 0 0 4 21"/>',
   repeat: '<path d="m17 2.5 4 4-4 4"/><path d="M21 6.5H8a5 5 0 0 0-5 5v1"/><path d="m7 21.5-4-4 4-4"/><path d="M3 17.5h13a5 5 0 0 0 5-5v-1"/>',
   chart: '<path d="M4 20h16"/><path d="M7 20v-6"/><path d="M12 20V6"/><path d="M17 20v-9"/>',
   sliders: '<path d="M4 7h8"/><circle cx="15.5" cy="7" r="2.2"/><path d="M4 17h3"/><circle cx="10.5" cy="17" r="2.2"/><path d="M14 17h6"/>',
-  flame: '<path d="M12 3l2.7 5.7 6.3.9-4.6 4.4 1.1 6.3L12 17.4 6.5 20.3l1.1-6.3L3 9.6l6.3-.9z"/>',
+  flame: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
   x: '<path d="M6 6l12 12"/><path d="M18 6 6 18"/>',
   check: '<path d="M4.5 12.8 9.6 18 19.5 6.8"/>',
   play: '<path fill="currentColor" stroke="none" d="M8 5v14l11-7z"/>',
@@ -195,6 +204,7 @@ const ICONS = {
   trophy: '<path d="M8 21h8"/><path d="M12 17v4"/><path d="M7 3h10v6a5 5 0 0 1-10 0V3z"/><path d="M7 5H4v1a3 3 0 0 0 3 3"/><path d="M17 5h3v1a3 3 0 0 1-3 3"/>',
   star: '<path d="M12 3l2.7 5.7 6.3.9-4.6 4.4 1.1 6.3L12 17.4 6.5 20.3l1.1-6.3L3 9.6l6.3-.9z"/>',
   lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/>',
+  download: '<path d="M12 3v12"/><path d="m8 11 4 4 4-4"/><path d="M4 19h16"/>',
 };
 
 function iconEl(name, extraClass) {
@@ -220,6 +230,89 @@ function applyTheme() {
   document.documentElement.dataset.theme = resolved;
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.content = resolved === 'light' ? '#f2efe7' : '#0b1220';
+}
+
+/* ---------- التثبيت (PWA) ---------- */
+let deferredInstall = null;
+
+const SHARE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m8 7 4-4 4 4"/><path d="M8 11H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-2"/></svg>';
+const PLUS_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 9v6M9 12h6"/></svg>';
+
+function isInstalled() {
+  return matchMedia('(display-mode: standalone)').matches
+    || window.navigator.standalone === true;
+}
+
+/* iOS + سفاري فقط — كروم على iOS لا يدعم الإضافة للشاشة الرئيسية */
+function isIOSSafari() {
+  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent)
+    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const nativeIOSBrowser = /crios|fxios|edgi/i.test(navigator.userAgent);
+  return ios && !nativeIOSBrowser;
+}
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredInstall = e;
+  updateInstallUI();
+});
+window.addEventListener('appinstalled', () => {
+  deferredInstall = null;
+  toast('تم تثبيت Englify على جهازك 🎉');
+  updateInstallUI();
+});
+
+function renderIosSteps(list) {
+  list.innerHTML = '';
+  const steps = [
+    { svg: SHARE_SVG, text: 'اضغط زر المشاركة في شريط سفاري السفلي' },
+    { svg: PLUS_SVG, text: 'اختر «إضافة إلى الشاشة الرئيسية»' },
+    { text: 'أكّد بضغط «إضافة» — سيظهر التطبيق بجانب تطبيقاتك' },
+  ];
+  steps.forEach((s, i) => {
+    const li = el('li');
+    li.append(el('span', 'step-num', String(i + 1)));
+    if (s.svg) {
+      const ic = el('span', 'step-ic');
+      ic.innerHTML = s.svg;
+      li.append(ic);
+    }
+    li.append(el('span', null, s.text));
+    list.append(li);
+  });
+}
+
+function updateInstallUI() {
+  const card = $('#install-card');
+  const banner = $('#install-banner');
+  if (!card) return;
+
+  const installed = isInstalled();
+  card.hidden = installed;
+
+  if (!installed) {
+    const btn = $('#btn-install');
+    const steps = $('#install-steps');
+    const desc = $('#install-desc');
+    btn.hidden = true;
+    steps.hidden = true;
+    if (deferredInstall) {
+      desc.textContent = 'ثبّت Englify كتطبيق مستقل — يفتح أسرع وبملء الشاشة.';
+      btn.hidden = false;
+    } else if (isIOSSafari()) {
+      desc.textContent = 'أضف Englify إلى شاشتك الرئيسية في ثلاث خطوات:';
+      renderIosSteps(steps);
+      steps.hidden = false;
+    } else {
+      desc.textContent = 'التثبيت متاح عبر كروم (أندرويد/كمبيوتر) أو سفاري على iOS بعد الإضافة للشاشة الرئيسية.';
+    }
+  }
+
+  if (banner) {
+    banner.hidden = installed
+      || state.installDismissed
+      || (!deferredInstall && !isIOSSafari());
+  }
 }
 
 /* ---------- Push عبر OneSignal ---------- */
@@ -295,7 +388,7 @@ function dueMistakes() {
 /* ---------- الإنجازات ---------- */
 const ACHIEVEMENTS = [
   { id: 'first-step', icon: 'play', name: 'الخطوة الأولى', desc: 'أكمل درسك الأول' },
-  { id: 'perfect', icon: 'star', name: 'درس مثالي', desc: 'أجب عن 10/10 في درس كامل' },
+  { id: 'perfect', icon: 'star', name: 'درس مثالي', desc: 'أجب عن كل أسئلة الدرس صحيحة' },
   { id: 'goal-first', icon: 'target', name: 'هدف اليوم', desc: 'حقق هدفك اليومي لأول مرة' },
   { id: 'streak-7', icon: 'flame', name: 'أسبوع كامل', desc: 'حافظ على سلسلة 7 أيام' },
   { id: 'streak-30', icon: 'flame', name: 'شهر من الالتزام', desc: 'حافظ على سلسلة 30 يوماً' },
@@ -365,6 +458,20 @@ function confetti() {
   requestAnimationFrame(frame);
 }
 
+/* ---------- نظام المستويات ----------
+   المستوى مشتق من النقاط مباشرة — بلا حقول جديدة ولا ترحيل بيانات.
+   كل مستوى يتطلب 50 نقطة أكثر من سابقه: 100، 150، 200... */
+function levelInfo() {
+  let level = 1, into = state.xp, need = 100;
+  while (into >= need) { into -= need; level++; need += 50; }
+  return { level, into, need };
+}
+
+function celebrateLevel(lv) {
+  confetti();
+  toast(`وصلت إلى المستوى ${arNum(lv)}!`);
+}
+
 /* ---------- التنقل ---------- */
 let currentScreen = 'home';
 
@@ -418,18 +525,19 @@ function reviewQuestion(wordObj, forcedType) {
 /* ---------- محرك الدرس ---------- */
 const lesson = { active: false, items: [], index: 0, correct: 0, answered: false, kind: 'normal' };
 
-/* درس عادي = حتى 3 كلمات مراجعة مستحقة + الباقي كلمات جديدة */
+/* درس عادي: طوله = الهدف اليومي، ويبدأ بما يصل إلى 30% كلمات مراجعة مستحقة */
 function startNormalLesson() {
   if (!vocabulary.length) {
     toast('تعذّر تحميل words.json — راجع الملاحظة في الصفحة الرئيسية');
     return;
   }
+  const len = state.dailyGoal;
   state.savedLesson = null;
   const used = new Set();
   const items = [];
 
   for (const m of shuffle(dueMistakes())) {
-    if (items.length >= REVIEW_PER_LESSON) break;
+    if (items.length >= reviewCap()) break;
     const v = vocabMap.get(m.word);
     if (!v || used.has(v.word)) continue;
     used.add(v.word);
@@ -441,7 +549,7 @@ function startNormalLesson() {
   let bag = [...fresh, ...rest];
   let allowDup = false;
 
-  while (items.length < LESSON_LENGTH) {
+  while (items.length < len) {
     if (!bag.length) {
       const unused = shuffle(vocabulary.filter(w => !used.has(w.word)));
       bag = unused.length ? unused : shuffle(vocabulary); // مفردات أقل من طول الدرس → اسمح بالتكرار
@@ -455,13 +563,13 @@ function startNormalLesson() {
   startLesson(items, 'normal');
 }
 
-/* درس مراجعة: المستحق أولاً ثم الأقرب موعداً */
+/* درس مراجعة: المستحق أولاً ثم الأقرب موعداً — بطول الهدف اليومي */
 function startReviewLesson() {
   const t = today();
   const due = shuffle(state.mistakes.filter(m => m.due <= t));
   const upcoming = state.mistakes.filter(m => m.due > t)
     .sort((a, b) => (a.due < b.due ? -1 : 1));
-  const picked = [...due, ...upcoming].slice(0, LESSON_LENGTH)
+  const picked = [...due, ...upcoming].slice(0, state.dailyGoal)
     .map(m => vocabMap.get(m.word))
     .filter(Boolean)
     .map(v => reviewQuestion(v));
@@ -562,22 +670,19 @@ function answerQuestion(btn, chosen) {
   state.dailyLog[today()] = (state.dailyLog[today()] || 0) + 1;
 
   let masteredNow = false;
-  let leveledUp = 0;
   if (correct) {
     const prevLevel = levelInfo().level;
     lesson.correct++;
     state.correctAnswers++;
     state.xp += XP_PER_CORRECT;
     if (!state.learnedWords.includes(q.word)) state.learnedWords.push(q.word);
-    masteredNow = promoteMistake(q.word);
+    masteredNow = promoteMistake(q.word); // إجابة صحيحة تقدّم جدول المراجعة (في أي نوع درس)
     spawnXpFloat();
-    const nowLevel = levelInfo().level;
-    if (nowLevel > prevLevel) leveledUp = nowLevel;
+    if (levelInfo().level > prevLevel) celebrateLevel(levelInfo().level);
     if (state.dailyProgress === state.dailyGoal && !state.goalReachedOnce) {
       state.goalReachedOnce = true;
-      confetti();
+      confetti(); // لحظة احتفال: تحقيق هدف اليوم
     }
-    if (leveledUp) celebrateLevel(leveledUp);
   } else {
     state.incorrectAnswers++;
     addMistake(q.word, q.meaning);
@@ -629,7 +734,7 @@ function showSummary() {
 
   const total = lesson.items.length;
   const pct = Math.round((lesson.correct / total) * 100);
-  if (total >= LESSON_LENGTH && pct === 100) state.perfectLesson = true;
+  if (lesson.kind === 'normal' && pct === 100) state.perfectLesson = true;
 
   completeStreakDay();
   checkAchievements();
@@ -673,9 +778,8 @@ function updateStreakChips() {
   const pill = $('#home-streak-pill');
   const pillText = $('#home-streak');
   if (pill && pillText) {
-    pill.hidden = st === 0;
-    pillText.textContent = st === 1 ? 'يوم واحد' : st === 2 ? 'يومان'
-      : `${arNum(st)} ${st <= 10 ? 'أيام' : 'يوماً'}`;
+    pillText.textContent = `${st} ${st <= 10 ? 'أيام' : 'يوماً'}${st === 0 ? '' : ' 🔥'}`;
+    pill.title = st === 0 ? 'لا سلسلة بعد — أكمل درساً لبدء السلسلة' : `سلسلة ${st} يوماً متتالية`;
   }
   $('#sidebar-streak').textContent = st;
   $('#sidebar-xp').textContent = state.xp;
@@ -683,20 +787,6 @@ function updateStreakChips() {
 
 function accuracyPct() {
   return state.totalQuestions ? Math.round(state.correctAnswers / state.totalQuestions * 100) : null;
-}
-
-/* ---------- نظام المستويات ----------
-   المستوى مشتق من النقاط مباشرة — بلا حقول جديدة ولا ترحيل بيانات.
-   كل مستوى يتطلب 50 نقطة أكثر من سابقه: 100، 150، 200... */
-function levelInfo() {
-  let level = 1, into = state.xp, need = 100;
-  while (into >= need) { into -= need; level++; need += 50; }
-  return { level, into, need };
-}
-
-function celebrateLevel(lv) {
-  confetti();
-  toast(`وصلت إلى المستوى ${arNum(lv)}!`);
 }
 
 function setPill(elm, cls, text, withStar) {
@@ -714,10 +804,10 @@ function renderHome() {
   const done = state.dailyProgress >= state.dailyGoal;
   const s = state.savedLesson;
   const due = dueMistakes().length;
+  const mc = state.mistakes.length;
 
   /* نصوص تكيّفية حسب حالة المستخدم */
   $('#hero-title').textContent = done ? 'أنجزت تمرين اليوم!' : 'وقت تمرين اليوم!';
-  $('#btn-start-label').textContent = done ? 'درس إضافي' : 'ابدأ التعلم';
   $('#home-subtitle').textContent =
     s ? 'لديك درس لم يكتمل — تابع من حيث توقفت دون فقدان تقدمك.' :
       state.lessonsDone === 0 ? 'رحلتك تبدأ من هنا — درس واحد يومياً يصنع الفرق.' :
@@ -725,7 +815,46 @@ function renderHome() {
           due >= 3 ? `لديك ${countAr(due, ['كلمة مستحقة للمراجعة', 'كلمتان مستحقتان للمراجعة', 'كلمات مستحقة للمراجعة', 'كلمة مستحقة للمراجعة'])} — لا تدعها تتراكم.` :
             'مسيرتك تتقدم بشكل رائع! أكمل درس اليوم للحفاظ على الشعلة.';
 
-  /* بطاقة الهدف */
+  /* الزر المتكيّف: متابعة الدرس (مع شريط تقدّم) أو درس جديد */
+  const startLabel = $('#btn-start-label');
+  const prog = $('#cta-progress');
+  const fresh = $('#btn-fresh-start');
+  if (s) {
+    startLabel.textContent = 'متابعة الدرس';
+    prog.hidden = false;
+    $('#cta-fill').style.width = (s.next / s.items.length * 100) + '%';
+    $('#cta-nums').textContent = `${s.next + 1} / ${s.items.length}`;
+    fresh.hidden = false;
+  } else {
+    startLabel.textContent = done ? 'درس إضافي' : 'ابدأ التعلم';
+    prog.hidden = true;
+    fresh.hidden = true;
+  }
+  $('#btn-start').classList.toggle('is-resume', !!s);
+
+  /* زر المراجعة: يلفت الانتباه فقط عند وجود كلمات مستحقة الآن */
+  const reviewBtn = $('#btn-home-review');
+  const dueChip = $('#home-due-chip');
+  reviewBtn.classList.toggle('is-attention', due > 0);
+  reviewBtn.classList.toggle('is-muted', mc === 0);
+  dueChip.hidden = due === 0;
+  dueChip.textContent = due ? countAr(due, ['كلمة مستحقة', 'كلمتان مستحقتان', 'كلمات مستحقة', 'كلمة مستحقة']) : '';
+
+  /* تلميح التوقّع — يتبع الهدف الحالي */
+  const mins = Math.max(1, Math.round(state.dailyGoal * 3 / 10));
+  $('#action-hint').textContent = s ? '' :
+    `درس من ${arNum(state.dailyGoal)} أسئلة · نحو ${countAr(mins, ['دقيقة واحدة', 'دقيقتين', 'دقائق', 'دقيقة'])}`;
+
+  /* ملاحظة السلسلة — حسب طورها */
+  const st = state.streak;
+  $('#streak-note').textContent =
+    st === 0 ? 'ابدأ سلسلتك اليوم' :
+      st < 3 ? 'بداية موفقة — واصل غداً' :
+        st < 7 ? 'حافظ على تركّزك' :
+          st < 30 ? 'سلسلة رائعة!' :
+            'التزام أسطوري!';
+
+  /* بطاقة الهدف اليومي */
   $('#goal-done').textContent = arNum(state.dailyProgress);
   $('#goal-total').textContent = arNum(state.dailyGoal);
   $('#goal-end-label').textContent = `${arNum(state.dailyGoal)} أسئلة`;
@@ -753,17 +882,7 @@ function renderHome() {
   else if (acc >= 50) setPill($('#pill-accuracy'), 'is-muted', 'جيد');
   else setPill($('#pill-accuracy'), 'is-muted', 'واصل التدرب');
 
-  const mc = state.mistakes.length;
-  const mcPill = $('#home-mistake-count');
-  mcPill.hidden = mc === 0;
-  mcPill.textContent = mc;
   $('#review-badge').textContent = mc || '';
-
-  $('#resume-banner').hidden = !s;
-  if (s) {
-    $('#resume-info').textContent =
-      `السؤال ${s.next + 1} من ${s.items.length} — ${countAr(s.correct, ['إجابة صحيحة واحدة', 'إجابتان صحيحتان', 'إجابات صحيحة', 'إجابة صحيحة'])} حتى الآن`;
-  }
 
   updateStreakChips();
 }
@@ -788,14 +907,18 @@ function renderReview() {
   const all = el('button', 'btn btn-primary');
   all.type = 'button';
   all.append(iconEl('play'), el('span', null, due.length
-    ? `مراجعة المستحق (${Math.min(due.length, LESSON_LENGTH)})`
-    : `تدرّب مبكراً (${Math.min(state.mistakes.length, LESSON_LENGTH)})`));
+    ? `مراجعة المستحق (${Math.min(due.length, state.dailyGoal)})`
+    : `تدرّب مبكراً (${Math.min(state.mistakes.length, state.dailyGoal)})`));
   all.addEventListener('click', startReviewLesson);
   head.append(all);
   head.append(el('p', 'review-note', due.length
     ? countAr(due.length, ['كلمة واحدة مستحقة اليوم', 'كلمتان مستحقتان اليوم', 'كلمات مستحقة اليوم', 'كلمة مستحقة اليوم'])
     : 'لا شيء مستحق اليوم — جدول المراجعة يسير كما يجب.'));
   box.append(head);
+
+  if (state.mistakes.length > state.dailyGoal) {
+    box.append(el('p', 'review-note', `لديك ${arNum(state.mistakes.length)} كلمة محفوظة — تُدرَّب على ${arNum(state.dailyGoal)} في كل مرة.`));
+  }
 
   const sorted = [...state.mistakes].sort((a, b) => (a.due < b.due ? -1 : a.due > b.due ? 1 : 0));
   const list = el('div', 'mistake-list');
@@ -855,7 +978,7 @@ function renderDictionary() {
     })
     .sort((a, b) => a.word.localeCompare(b.word));
 
-  $('#dict-sub').textContent = `${vocabulary.length} كلمة — تعلّمت ${learned.size} منها.`;
+  $('#dict-sub').textContent = `${arNum(vocabulary.length)} كلمة — تعلّمت ${arNum(learned.size)} منها.`;
 
   const box = $('#dict-list');
   box.innerHTML = '';
@@ -883,14 +1006,14 @@ function renderProgress() {
   const acc = accuracyPct();
   setRing($('#progress-ring'), acc || 0);
   $('#progress-pct').textContent = acc === null ? '—' : acc + '%';
-  $('#p-total').textContent = state.totalQuestions;
-  $('#p-correct').textContent = state.correctAnswers;
-  $('#p-wrong').textContent = state.incorrectAnswers;
-  $('#p-xp').textContent = state.xp;
+  $('#p-total').textContent = arNum(state.totalQuestions);
+  $('#p-correct').textContent = arNum(state.correctAnswers);
+  $('#p-wrong').textContent = arNum(state.incorrectAnswers);
+  $('#p-xp').textContent = arNum(state.xp);
   $('#p-level').textContent = arNum(levelInfo().level);
-  $('#p-words').textContent = state.learnedWords.length;
-  $('#p-mastered').textContent = state.masteredCount || 0;
-  $('#p-best').textContent = state.bestStreak;
+  $('#p-words').textContent = arNum(state.learnedWords.length);
+  $('#p-mastered').textContent = arNum(state.masteredCount || 0);
+  $('#p-best').textContent = arNum(state.bestStreak);
 
   /* آخر 7 أيام من النشاط */
   const wrap = $('#week-bars');
@@ -916,7 +1039,7 @@ function renderProgress() {
   /* سحابة الكلمات المتعلَّمة */
   const cloud = $('#word-cloud');
   cloud.innerHTML = '';
-  $('#p-words-big').textContent = state.learnedWords.length;
+  $('#p-words-big').textContent = arNum(state.learnedWords.length);
   if (!state.learnedWords.length) {
     cloud.append(el('p', 'empty-sub', 'أجب عن الأسئلة بشكل صحيح لتجمع كلماتك هنا.'));
   } else {
@@ -1011,26 +1134,41 @@ function toast(msg) {
 function bindEvents() {
   $$('[data-nav]').forEach(b => b.addEventListener('click', () => onNav(b.dataset.nav)));
 
-  $('#btn-start').addEventListener('click', startNormalLesson);
-  $('#btn-home-review').addEventListener('click', () => navigate('review'));
-  $('#resume-banner').addEventListener('click', resumeLesson);
-  $('#btn-exit').addEventListener('click', () => {
+  /* الزر الرئيسي: متابعة الدرس المتقطع أو درس جديد */
+  bind('#btn-start', 'click', () => {
+    if (state.savedLesson) resumeLesson();
+    else startNormalLesson();
+  });
+  bind('#btn-fresh-start', 'click', () => {
+    state.savedLesson = null;
+    saveState();
+    startNormalLesson();
+  });
+
+  /* زر المراجعة: يبدأ الدرس مباشرة عند وجود كلمات مستحقة، وإلا يعرض القائمة */
+  bind('#btn-home-review', 'click', () => {
+    if (dueMistakes().length) startReviewLesson();
+    else navigate('review');
+  });
+
+  /* الدرس */
+  bind('#btn-exit', 'click', () => {
     if (lesson.active) { state.savedLesson = null; saveState(); } // خروج مقصود = إلغاء الجلسة
     navigate('home');
   });
-  $('#btn-continue').addEventListener('click', () => {
+  bind('#btn-continue', 'click', () => {
     if (!lesson.active || !lesson.answered) return;
     lesson.index++;
     if (lesson.index >= lesson.items.length) showSummary();
     else renderQuestion();
   });
-  $('#btn-summary-continue').addEventListener('click', startNormalLesson);
-  $('#btn-summary-review').addEventListener('click', () => navigate('review'));
-  $('#btn-summary-home').addEventListener('click', () => navigate('home'));
+  bind('#btn-summary-continue', 'click', startNormalLesson);
+  bind('#btn-summary-review', 'click', () => navigate('review'));
+  bind('#btn-summary-home', 'click', () => navigate('home'));
 
   /* القاموس */
-  $('#dict-search').addEventListener('input', e => { dictQuery = e.target.value; renderDictionary(); });
-  $('#dict-filter').addEventListener('click', e => {
+  bind('#dict-search', 'input', e => { dictQuery = e.target.value; renderDictionary(); });
+  bind('#dict-filter', 'click', e => {
     const b = e.target.closest('.seg-btn');
     if (!b) return;
     dictFilter = b.dataset.filter;
@@ -1038,7 +1176,7 @@ function bindEvents() {
   });
 
   /* الإعدادات */
-  $('#theme-seg').addEventListener('click', e => {
+  bind('#theme-seg', 'click', e => {
     const b = e.target.closest('.seg-btn');
     if (!b) return;
     state.theme = b.dataset.themeOpt;
@@ -1049,15 +1187,16 @@ function bindEvents() {
       : state.theme === 'light' ? 'تم تفعيل المظهر الفاتح'
         : 'تم تفعيل المظهر الداكن');
   });
-  $('#goal-seg').addEventListener('click', e => {
+  bind('#goal-seg', 'click', e => {
     const b = e.target.closest('.seg-btn');
     if (!b) return;
     state.dailyGoal = Number(b.dataset.goal);
     saveState();
     renderSettings();
     renderHome();
+    toast('تم تحديث الهدف اليومي');
   });
-  $('#reminder-toggle').addEventListener('change', e => {
+  bind('#reminder-toggle', 'change', e => {
     state.reminderEnabled = e.target.checked;
     state.lastReminderFired = null;
     saveState();
@@ -1079,7 +1218,7 @@ function bindEvents() {
     resetBtn.classList.remove('is-armed');
     resetBtn.textContent = 'إعادة تعيين كل التقدم';
   };
-  resetBtn.addEventListener('click', () => {
+  bind('#btn-reset', 'click', () => {
     if (!armed) {
       armed = true;
       resetBtn.classList.add('is-armed');
@@ -1111,6 +1250,25 @@ function bindEvents() {
       if (b && !b.disabled) b.click();
     }
   });
+
+  /* التثبيت */
+  bind('#btn-install', 'click', async () => {
+    if (!deferredInstall) return;
+    deferredInstall.prompt();
+    await deferredInstall.userChoice; // appinstalled يكمل الباقي
+    deferredInstall = null;
+    updateInstallUI();
+  });
+  bind('#install-close', 'click', e => {
+    e.stopPropagation();
+    state.installDismissed = true;
+    saveState();
+    $('#install-banner').hidden = true;
+  });
+  bind('#install-banner', 'click', () => {
+    if (deferredInstall) $('#btn-install')?.click();
+    else navigate('settings');
+  });
 }
 
 /* ---------- التشغيل ---------- */
@@ -1129,7 +1287,7 @@ async function init() {
   renderSettings();
   syncPushTag();
   await loadVocabulary();
-  renderHome();
+  renderHome(); // تحديث الواجهة بعد معرفة حالة تحميل المفردات
   setInterval(() => { rollDaily(); checkReminder(); }, 30000);
 }
 

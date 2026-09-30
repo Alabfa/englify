@@ -512,12 +512,66 @@ html[data-theme="light"] body[data-heat="cold"] {
   margin-bottom: 18px;
 }
 
+/* صف الأزرار: عمود واحد على الجوال، عمودان 60/40 على الشاشات الأعرض */
 .hero-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: 1fr;
   gap: 12px;
 }
 
+.hero-actions .btn {
+  width: 100%;
+}
+
+.hero-actions .btn-hero-ghost {
+  justify-content: center;
+}
+
+/* زر البدء المتكيّف — الوسط افتراضياً، ويتوزع فقط مع شريط التقدّم */
+.hero-cta {
+  justify-content: center;
+}
+
+.hero-cta.is-resume {
+  justify-content: space-between;
+}
+
+.cta-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.cta-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cta-bar {
+  width: 72px;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: color-mix(in srgb, var(--amber-ink) 22%, transparent);
+}
+
+.cta-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: var(--amber-ink);
+  border-radius: 999px;
+  transition: width .4s ease;
+}
+
+.cta-nums {
+  font-size: .85rem;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+/* زر المراجعة — حالات تكيّفية */
 .btn-hero-ghost {
   background: var(--surface);
   box-shadow: inset 0 0 0 2px var(--line);
@@ -526,6 +580,44 @@ html[data-theme="light"] body[data-heat="cold"] {
 
 .btn-hero-ghost:hover {
   box-shadow: inset 0 0 0 2px var(--muted);
+}
+
+.btn-hero-ghost.is-attention {
+  background: color-mix(in srgb, var(--coral) 10%, var(--surface));
+  box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--coral) 55%, transparent);
+  color: var(--coral-text);
+}
+
+.btn-hero-ghost.is-muted {
+  opacity: .55;
+}
+
+/* تلميح التوقّع ورابط التجاهل */
+.action-hint {
+  color: var(--muted);
+  font-size: .82rem;
+  font-weight: 600;
+  margin-top: 10px;
+}
+
+.action-hint:empty {
+  display: none;
+}
+
+.link-btn {
+  display: inline-flex;
+  margin-top: 10px;
+  padding: 2px 4px;
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font-size: .82rem;
+  font-weight: 600;
+}
+
+.link-btn:hover {
+  color: var(--text);
+  text-decoration: underline;
 }
 
 .hero-divider {
@@ -588,48 +680,6 @@ html[data-theme="light"] body[data-heat="cold"] {
   width: 14px;
   height: 14px;
   color: var(--jade-text);
-}
-
-.resume-banner {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  width: 100%;
-  margin-top: 16px;
-  padding: 16px 18px;
-  text-align: start;
-  cursor: pointer;
-  color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--line-soft);
-  border-radius: var(--radius);
-}
-
-.resume-banner:hover {
-  border-color: var(--line);
-}
-
-.resume-text {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-
-.resume-text strong {
-  font-weight: 700;
-}
-
-.resume-text span {
-  color: var(--muted);
-  font-size: .85rem;
-}
-
-.ac-go {
-  color: var(--amber-text);
-  font-weight: 700;
-  flex: none;
-  font-size: .9rem;
 }
 
 .goal2 {
@@ -1715,6 +1765,12 @@ html[data-theme="light"] body[data-heat="cold"] {
 }
 
 /* ---------- التجاوب ---------- */
+@media (min-width: 640px) {
+  .hero-actions {
+    grid-template-columns: 1.4fr 1fr;
+  }
+}
+
 @media (max-width: 919px) {
   .sidebar {
     display: none;
@@ -1818,6 +1874,115 @@ html[data-theme="light"] body[data-heat="cold"] {
   .dock {
     bottom: calc(88px + env(safe-area-inset-bottom, 0px));
   }
+}
+
+/* ---------- التثبيت (PWA) ---------- */
+.install-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  margin-top: 16px;
+  padding: 14px 16px 14px 12px;
+  text-align: start;
+  cursor: pointer;
+  color: var(--text);
+  background: color-mix(in srgb, var(--amber) 10%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--amber) 45%, transparent);
+  border-radius: var(--radius);
+}
+
+.install-banner:hover {
+  border-color: var(--amber);
+}
+
+.ib-icon {
+  width: 42px;
+  height: 42px;
+  flex: none;
+  border-radius: 12px;
+  background: var(--amber);
+  color: var(--amber-ink);
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 1.1rem;
+}
+
+.ib-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ib-text strong {
+  font-weight: 700;
+}
+
+.ib-text span {
+  color: var(--muted);
+  font-size: .82rem;
+}
+
+.ib-close {
+  flex: none;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: none;
+  border: 0;
+  color: var(--muted);
+  font-size: .95rem;
+}
+
+.ib-close:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.install-steps {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.install-steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: .92rem;
+}
+
+.step-num {
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--amber);
+  color: var(--amber-ink);
+  display: grid;
+  place-items: center;
+  font-size: .78rem;
+  font-weight: 800;
+}
+
+.step-ic {
+  width: 22px;
+  height: 22px;
+  flex: none;
+  color: var(--amber-text);
+  display: inline-flex;
+}
+
+.step-ic svg {
+  width: 100%;
+  height: 100%;
 }
 
 @media (min-width: 920px) {
