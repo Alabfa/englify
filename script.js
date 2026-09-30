@@ -26,7 +26,7 @@ const reviewCap = () => Math.max(3, Math.round(state.dailyGoal * 0.3));
 const INSTALL_DEBUG = new URLSearchParams(location.search).has('debug');
 
 /* ---------- أدوات صغيرة ---------- */
-const $  = (sel, root = document) => root.querySelector(sel);
+const $ = (sel, root = document) => root.querySelector(sel);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
 function el(tag, className, text) {
@@ -106,7 +106,7 @@ function migrate() {
   if (Array.isArray(state.mistakes)) {
     for (const m of state.mistakes) {
       if (typeof m.stage !== 'number') { m.stage = 0; changed = true; }
-      if (typeof m.due !== 'string')   { m.due = today(); changed = true; }
+      if (typeof m.due !== 'string') { m.due = today(); changed = true; }
     }
   } else { state.mistakes = []; changed = true; }
   if (changed) saveState();
@@ -296,7 +296,7 @@ function syncPushTag() {
 let deferredInstall = null;
 
 const SHARE_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m8 7 4-4 4 4"/><path d="M8 11H6a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-2"/></svg>';
-const PLUS_SVG  = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 9v6M9 12h6"/></svg>';
+const PLUS_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 9v6M9 12h6"/></svg>';
 
 window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
@@ -317,7 +317,7 @@ function renderIosSteps(list, inSafari = true) {
   if (!inSafari) steps.push({ text: 'انسخ الرابط وافتحه في تطبيق Safari' });
   steps.push(
     { svg: SHARE_SVG, text: 'اضغط زر المشاركة في شريط سفاري السفلي' },
-    { svg: PLUS_SVG,  text: 'اختر «إضافة إلى الشاشة الرئيسية»' },
+    { svg: PLUS_SVG, text: 'اختر «إضافة إلى الشاشة الرئيسية»' },
     { text: 'أكّد بضغط «إضافة» — سيظهر التطبيق بجانب تطبيقاتك' },
   );
   steps.forEach((s, i) => {
@@ -337,6 +337,7 @@ function renderIosSteps(list, inSafari = true) {
    غياب إحداهما لا يعطّل الأخرى. ?debug يعرض الأسباب مباشرة */
 function updateInstallUI() {
   const installed = isInstalled();
+  const label = $('#install-label');
   const card = $('#install-card');
   const banner = $('#install-banner');
   const btn = $('#btn-install');
@@ -345,6 +346,7 @@ function updateInstallUI() {
 
   if (card) {
     card.hidden = installed && !INSTALL_DEBUG;
+    if (label) label.hidden = installed && !INSTALL_DEBUG; // ← السطر الجديد
     btn.hidden = true;
     steps.hidden = true;
     if (!installed) {
@@ -411,33 +413,33 @@ function dueMistakes() {
 
 /* ---------- الإنجازات ---------- */
 const ACHIEVEMENTS = [
-  { id: 'first-step',  icon: 'play',   name: 'الخطوة الأولى',    desc: 'أكمل درسك الأول' },
-  { id: 'perfect',     icon: 'star',   name: 'درس مثالي',        desc: 'أجب عن كل أسئلة الدرس صحيحة' },
-  { id: 'goal-first',  icon: 'target', name: 'هدف اليوم',        desc: 'حقق هدفك اليومي لأول مرة' },
-  { id: 'streak-7',    icon: 'flame',  name: 'أسبوع كامل',       desc: 'حافظ على سلسلة 7 أيام' },
-  { id: 'streak-30',   icon: 'flame',  name: 'شهر من الالتزام',  desc: 'حافظ على سلسلة 30 يوماً' },
-  { id: 'xp-100',      icon: 'zap',    name: 'أول مئة',          desc: 'اجمع 100 نقطة' },
-  { id: 'xp-500',      icon: 'zap',    name: 'جامع النقاط',      desc: 'اجمع 500 نقطة' },
-  { id: 'words-25',    icon: 'book',   name: '25 كلمة',          desc: 'تعلّم 25 كلمة' },
-  { id: 'words-100',   icon: 'book',   name: 'قاموس متنامٍ',     desc: 'تعلّم 100 كلمة' },
-  { id: 'accuracy-90', icon: 'chart',  name: 'دقة عالية',        desc: 'دقة 90% بعد 50 سؤالاً' },
-  { id: 'master-10',   icon: 'trophy', name: 'مُتقِن',           desc: 'أتقنت 10 كلمات من المراجعة' },
+  { id: 'first-step', icon: 'play', name: 'الخطوة الأولى', desc: 'أكمل درسك الأول' },
+  { id: 'perfect', icon: 'star', name: 'درس مثالي', desc: 'أجب عن كل أسئلة الدرس صحيحة' },
+  { id: 'goal-first', icon: 'target', name: 'هدف اليوم', desc: 'حقق هدفك اليومي لأول مرة' },
+  { id: 'streak-7', icon: 'flame', name: 'أسبوع كامل', desc: 'حافظ على سلسلة 7 أيام' },
+  { id: 'streak-30', icon: 'flame', name: 'شهر من الالتزام', desc: 'حافظ على سلسلة 30 يوماً' },
+  { id: 'xp-100', icon: 'zap', name: 'أول مئة', desc: 'اجمع 100 نقطة' },
+  { id: 'xp-500', icon: 'zap', name: 'جامع النقاط', desc: 'اجمع 500 نقطة' },
+  { id: 'words-25', icon: 'book', name: '25 كلمة', desc: 'تعلّم 25 كلمة' },
+  { id: 'words-100', icon: 'book', name: 'قاموس متنامٍ', desc: 'تعلّم 100 كلمة' },
+  { id: 'accuracy-90', icon: 'chart', name: 'دقة عالية', desc: 'دقة 90% بعد 50 سؤالاً' },
+  { id: 'master-10', icon: 'trophy', name: 'مُتقِن', desc: 'أتقنت 10 كلمات من المراجعة' },
 ];
 
 function checkAchievements() {
   const acc = state.totalQuestions ? state.correctAnswers / state.totalQuestions * 100 : 0;
   const rules = {
-    'first-step':  state.lessonsDone >= 1,
-    'perfect':     state.perfectLesson === true,
-    'goal-first':  state.goalReachedOnce === true,
-    'streak-7':    state.bestStreak >= 7,
-    'streak-30':   state.bestStreak >= 30,
-    'xp-100':      state.xp >= 100,
-    'xp-500':      state.xp >= 500,
-    'words-25':    state.learnedWords.length >= 25,
-    'words-100':   state.learnedWords.length >= 100,
+    'first-step': state.lessonsDone >= 1,
+    'perfect': state.perfectLesson === true,
+    'goal-first': state.goalReachedOnce === true,
+    'streak-7': state.bestStreak >= 7,
+    'streak-30': state.bestStreak >= 30,
+    'xp-100': state.xp >= 100,
+    'xp-500': state.xp >= 500,
+    'words-25': state.learnedWords.length >= 25,
+    'words-100': state.learnedWords.length >= 100,
     'accuracy-90': state.totalQuestions >= 50 && acc >= 90,
-    'master-10':   (state.masteredCount || 0) >= 10,
+    'master-10': (state.masteredCount || 0) >= 10,
   };
   for (const a of ACHIEVEMENTS) {
     if (!state.achievements[a.id] && rules[a.id]) {
@@ -569,7 +571,7 @@ function startNormalLesson() {
   }
 
   const fresh = shuffle(vocabulary.filter(w => !used.has(w.word) && !state.learnedWords.includes(w.word)));
-  const rest  = shuffle(vocabulary.filter(w => !used.has(w.word) && state.learnedWords.includes(w.word)));
+  const rest = shuffle(vocabulary.filter(w => !used.has(w.word) && state.learnedWords.includes(w.word)));
   let bag = [...fresh, ...rest];
   let allowDup = false;
 
@@ -771,9 +773,9 @@ function showSummary() {
 
   $('#summary-message').textContent =
     pct === 100 ? 'ممتاز! أداء مثالي.' :
-    pct >= 80   ? 'رائع! تقدّم ممتاز.' :
-    pct >= 50   ? 'أحسنت — واصل على هذا المعدل!' :
-                  'واصل التدرب، ستتحسن بسرعة!';
+      pct >= 80 ? 'رائع! تقدّم ممتاز.' :
+        pct >= 50 ? 'أحسنت — واصل على هذا المعدل!' :
+          'واصل التدرب، ستتحسن بسرعة!';
   $('#summary-score').textContent = `${lesson.correct} / ${total}`;
   $('#summary-pct').textContent = pct + '%';
   $('#summary-xp').textContent = '+' + lesson.correct * XP_PER_CORRECT;
@@ -833,11 +835,11 @@ function renderHome() {
   /* نصوص تكيّفية حسب حالة المستخدم */
   $('#hero-title').textContent = done ? 'أنجزت تمرين اليوم!' : 'وقت تمرين اليوم!';
   $('#home-subtitle').textContent =
-    s                        ? 'لديك درس لم يكتمل — تابع من حيث توقفت دون فقدان تقدمك.' :
-    state.lessonsDone === 0  ? 'رحلتك تبدأ من هنا — درس واحد يومياً يصنع الفرق.' :
-    done                     ? 'حققت هدف اليوم! عُد غداً لتبقي شعلتك مشتعلة.' :
-    due >= 3                 ? `لديك ${countAr(due, ['كلمة مستحقة للمراجعة', 'كلمتان مستحقتان للمراجعة', 'كلمات مستحقة للمراجعة', 'كلمة مستحقة للمراجعة'])} — لا تدعها تتراكم.` :
-                               'مسيرتك تتقدم بشكل رائع! أكمل درس اليوم للحفاظ على الشعلة.';
+    s ? 'لديك درس لم يكتمل — تابع من حيث توقفت دون فقدان تقدمك.' :
+      state.lessonsDone === 0 ? 'رحلتك تبدأ من هنا — درس واحد يومياً يصنع الفرق.' :
+        done ? 'حققت هدف اليوم! عُد غداً لتبقي شعلتك مشتعلة.' :
+          due >= 3 ? `لديك ${countAr(due, ['كلمة مستحقة للمراجعة', 'كلمتان مستحقتان للمراجعة', 'كلمات مستحقة للمراجعة', 'كلمة مستحقة للمراجعة'])} — لا تدعها تتراكم.` :
+            'مسيرتك تتقدم بشكل رائع! أكمل درس اليوم للحفاظ على الشعلة.';
 
   /* الزر المتكيّف: متابعة الدرس (مع شريط تقدّم) أو درس جديد */
   const startLabel = $('#btn-start-label');
@@ -873,10 +875,10 @@ function renderHome() {
   const st = state.streak;
   $('#streak-note').textContent =
     st === 0 ? 'ابدأ سلسلتك اليوم' :
-    st < 3   ? 'بداية موفقة — واصل غداً' :
-    st < 7   ? 'حافظ على تركّزك' :
-    st < 30  ? 'سلسلة رائعة!' :
-               'التزام أسطوري!';
+      st < 3 ? 'بداية موفقة — واصل غداً' :
+        st < 7 ? 'حافظ على تركّزك' :
+          st < 30 ? 'سلسلة رائعة!' :
+            'التزام أسطوري!';
 
   /* بطاقة الهدف اليومي */
   $('#goal-done').textContent = arNum(state.dailyProgress);
@@ -900,11 +902,11 @@ function renderHome() {
   setPill($('#pill-level'), 'is-cyan', `${arNum(lv.into)} / ${arNum(lv.need)} نقطة`);
   if (vocabulary.length) setPill($('#pill-words'), 'is-jade', `من أصل ${arNum(vocabulary.length)}`);
   else setPill($('#pill-words'), 'is-muted', '—');
-  if (acc === null)    setPill($('#pill-accuracy'), 'is-muted', 'ابدأ الآن');
-  else if (acc >= 90)  setPill($('#pill-accuracy'), 'is-amber', 'ممتاز', true);
-  else if (acc >= 75)  setPill($('#pill-accuracy'), 'is-amber', 'جيد جداً');
-  else if (acc >= 50)  setPill($('#pill-accuracy'), 'is-muted', 'جيد');
-  else                 setPill($('#pill-accuracy'), 'is-muted', 'واصل التدرب');
+  if (acc === null) setPill($('#pill-accuracy'), 'is-muted', 'ابدأ الآن');
+  else if (acc >= 90) setPill($('#pill-accuracy'), 'is-amber', 'ممتاز', true);
+  else if (acc >= 75) setPill($('#pill-accuracy'), 'is-amber', 'جيد جداً');
+  else if (acc >= 50) setPill($('#pill-accuracy'), 'is-muted', 'جيد');
+  else setPill($('#pill-accuracy'), 'is-muted', 'واصل التدرب');
 
   $('#review-badge').textContent = mc || '';
 
@@ -1017,9 +1019,9 @@ function renderDictionary() {
     const mean = el('span', 'dict-meaning', w.meaning); mean.dir = 'rtl'; mean.lang = 'ar';
     info.append(word, mean);
     let chip;
-    if (inReview.has(w.word))      chip = el('span', 'status-chip is-review', 'قيد المراجعة');
-    else if (learned.has(w.word))  chip = el('span', 'status-chip is-learned', 'متعلَّمة');
-    else                           chip = el('span', 'status-chip is-new', 'جديدة');
+    if (inReview.has(w.word)) chip = el('span', 'status-chip is-review', 'قيد المراجعة');
+    else if (learned.has(w.word)) chip = el('span', 'status-chip is-learned', 'متعلَّمة');
+    else chip = el('span', 'status-chip is-new', 'جديدة');
     row.append(info, chip);
     box.append(row);
   }
@@ -1125,8 +1127,8 @@ function updateReminderStatus() {
     p === 'granted' ? (state.reminderEnabled
       ? 'التنبيهات مفعّلة — يصلك إشعار يومي الساعة 6:00 مساءً.'
       : 'الإذن ممنوح، فعّل التنبيه لاستخدامه.') :
-    p === 'denied'  ? 'الإشعارات محظورة في إعدادات المتصفح.' :
-                      'سنطلب إذن الإشعارات عند التفعيل.';
+      p === 'denied' ? 'الإشعارات محظورة في إعدادات المتصفح.' :
+        'سنطلب إذن الإشعارات عند التفعيل.';
 }
 
 /* التنبيه داخل التطبيق — يعمل فقط طالما الصفحة مفتوحة */
@@ -1209,7 +1211,7 @@ function bindEvents() {
     applyTheme();
     renderSettings();
     toast(state.theme === 'system' ? 'المظهر يتبع النظام'
-        : state.theme === 'light' ? 'تم تفعيل المظهر الفاتح'
+      : state.theme === 'light' ? 'تم تفعيل المظهر الفاتح'
         : 'تم تفعيل المظهر الداكن');
   });
   bind('#goal-seg', 'click', e => {
