@@ -15,7 +15,9 @@ const REMINDER_TIME = '18:00';           // 6:00 مساءً — ثابت لجم�
 const SRS_INTERVALS = [1, 3, 7, 14, 30]; // جدول التكرار المتباعد بالأيام
 
 /* ضع هنا App ID من لوحة OneSignal (اتركه كما هو إذا لم تضبط Push بعد) */
-const ONESIGNAL_APP_ID = 'YOUR_APP_ID';
+const ONESIGNAL_APP_ID = 'e39e7961-871c-4d5f-bb8f-15bcfefc952b';
+
+const INSTALL_DEBUG = new URLSearchParams(location.search).has('debug');
 
 /* طول الدرس يتبع الهدف اليومي — درس واحد = هدف اليوم.
    سقف كلمات المراجعة داخل الدرس العادي ≈ 30% من الهدف */
@@ -1211,6 +1213,21 @@ function bindEvents() {
     }
     renderSettings();
   });
+
+  bind('#install-card', 'click', (() => {
+    let taps = 0, timer;
+    return () => {
+      if (!INSTALL_DEBUG) return;
+      clearTimeout(timer);
+      timer = setTimeout(() => taps = 0, 1500);
+      if (++taps >= 5) {
+        state.installDismissed = false;
+        saveState();
+        updateInstallUI();
+        toast('أُعيد ضبط حالة التثبيت');
+      }
+    };
+  })());
 
   /* إعادة التعيين على خطوتين */
   const resetBtn = $('#btn-reset');
